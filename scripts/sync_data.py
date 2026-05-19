@@ -5,8 +5,19 @@ import datetime
 import requests
 from supabase import create_client, Client
 
+def safe_float(val):
+    try:
+        if val is None:
+            return 0.0
+        cleaned = str(val).strip()
+        if not cleaned or cleaned.lower() in ("null", "none", "n/a", ""):
+            return 0.0
+        return float(cleaned)
+    except ValueError:
+        return 0.0
+
 def main():
-    print("🚀 Starting BharatFlow Background Mandi Data Sync Scraper...")
+    print("[START] Starting BharatFlow Background Mandi Data Sync Scraper...")
 
     # Load credentials from environment
     supabase_url = os.environ.get("SUPABASE_URL")
@@ -14,14 +25,14 @@ def main():
     gov_api_key = os.environ.get("GOV_API_KEY")
 
     if not supabase_url or not supabase_key or not gov_api_key:
-        print("❌ Missing environment variables! Please configure SUPABASE_URL, SUPABASE_KEY, and GOV_API_KEY.")
+        print("[ERROR] Missing environment variables! Please configure SUPABASE_URL, SUPABASE_KEY, and GOV_API_KEY.")
         sys.exit(1)
 
     # Initialize Supabase client
     try:
         supabase: Client = create_client(supabase_url, supabase_key)
     except Exception as e:
-        print(f"❌ Failed to connect to Supabase: {e}")
+        print(f"[ERROR] Failed to connect to Supabase: {e}")
         sys.exit(1)
 
     # Calculate date filters for the last 3 days (DD/MM/YYYY)
@@ -31,7 +42,7 @@ def main():
         date = now - datetime.timedelta(days=i)
         date_filters.append(date.strftime("%d/%m/%Y"))
 
-    print(f"📅 Target arrival dates for synchronization: {date_filters}")
+    print(f"[INFO] Target arrival dates for synchronization: {date_filters}")
 
     resource_id = "35985678-0d79-46b4-9ed6-6f13308a1d24"
     base_url = f"https://api.data.gov.in/resource/{resource_id}"
@@ -39,7 +50,7 @@ def main():
     total_records_synced = 0
 
     for date_filter in date_filters:
-        print(f"\n🌾 Fetching data for Arrival Date: {date_filter}...")
+        print(f"[INFO] Fetching data for Arrival Date: {date_filter}...")
         offset = 0
         limit = 1000
 
@@ -49,14 +60,14 @@ def main():
             try:
                 response = requests.get(url, timeout=30)
                 if response.status_code != 200:
-                    print(f"⚠️ Government API returned error code {response.status_code} for date {date_filter}")
+                    print(f"[WARNING] Government API returned error code {response.status_code} for date {date_filter}")
                     break
                 
                 data = response.json()
                 records = data.get("records", [])
                 
                 if not records:
-                    print(f"ℹ️ No more records found for date {date_filter} (offset: {offset})")
+                    print(f"[INFO] No more records found for date {date_filter} (offset: {offset})")
                     break
 
                 # Map records to Supabase schema
@@ -80,9 +91,9 @@ def main():
                         "state": r.get("State") or r.get("state") or "India",
                         "district": r.get("District") or r.get("district") or "",
                         "arrival_date": iso_date,
-                        "modal_price": float(r.get("Modal_Price") or r.get("modal_price") or 0),
-                        "min_price": float(r.get("Min_Price") or r.get("min_price") or 0),
-                        "max_price": float(r.get("Max_Price") or r.get("max_price") or 0),
+                        "modal_price": safe_float(r.get("Modal_Price") or r.get("modal_price")),
+                        "min_price": safe_float(r.get("Min_Price") or r.get("min_price")),
+                        "max_price": safe_float(r.get("Max_Price") or r.get("max_price")),
                         "variety": r.get("Variety") or r.get("variety") or "General",
                         "grade": r.get("Grade") or r.get("grade") or "FAQ",
                         "sync_at": sync_time
@@ -91,10 +102,10 @@ def main():
                 # Upsert into Supabase
                 try:
                     res = supabase.table("mandi_prices").upsert(mapped_records, on_conflict="mandi_name,commodity_name,arrival_date,variety").execute()
-                    print(f"✅ Upserted batch of {len(mapped_records)} records (offset: {offset})")
+                    print(f"[SUCCESS] Upserted batch of {len(mapped_records)} records (offset: {offset})")
                     total_records_synced += len(mapped_records)
                 except Exception as db_err:
-                    print(f"❌ Supabase upsert error: {db_err}")
+                    print(f"[ERROR] Supabase upsert error: {db_err}")
 
                 if len(records) < limit:
                     # No more records for this date
@@ -103,10 +114,10 @@ def main():
                 offset += limit
 
             except Exception as e:
-                print(f"❌ Error during fetching/processing: {e}")
+                print(f"[ERROR] Error during fetching/processing: {e}")
                 break
 
-    print(f"\n✨ Sync completed! Total records synchronized: {total_records_synced}")
+    print(f"[SUCCESS] Sync completed! Total records synchronized: {total_records_synced}")
 
 if __name__ == "__main__":
     main()
