@@ -5,16 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BharatFlow Post Moderation Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <!-- ✅ FIX 1: Supabase CDN with onload callback -->
-    <script>
-        window._supabaseReady = false;
-        window._supabaseLoadError = false;
-    </script>
-    <script 
-        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-        onload="window._supabaseReady = true;"
-        onerror="window._supabaseLoadError = true;"
-    ></script>
+
+    <!-- ✅ CORRECT CDN: UMD build jo window.supabase properly expose karta hai -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
     <style>
         * { box-sizing: border-box; }
         body {
@@ -28,11 +22,7 @@
             align-items: center;
             min-height: 100vh;
         }
-        .container {
-            width: 100%;
-            max-width: 500px;
-            padding: 20px;
-        }
+        .container { width: 100%; max-width: 500px; padding: 20px; }
         .card {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(20px);
@@ -42,90 +32,42 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             text-align: center;
         }
-        h2 {
-            font-size: 26px;
-            font-weight: 800;
-            margin-top: 0;
-            margin-bottom: 10px;
-            letter-spacing: -0.5px;
-        }
-        p {
-            font-size: 15px;
-            color: #94a3b8;
-            line-height: 1.6;
-            margin-top: 0;
-            margin-bottom: 24px;
-        }
+        h2 { font-size: 26px; font-weight: 800; margin-top: 0; margin-bottom: 10px; letter-spacing: -0.5px; }
+        p { font-size: 15px; color: #94a3b8; line-height: 1.6; margin-top: 0; margin-bottom: 24px; }
         .spinner {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
             border: 4px solid rgba(255, 255, 255, 0.1);
             border-top-color: #38bdf8;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 30px auto;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         textarea {
-            width: 100%;
-            height: 120px;
+            width: 100%; height: 120px;
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 12px;
             color: #ffffff;
             padding: 12px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: none;
-            margin-bottom: 24px;
-            outline: none;
+            font-family: inherit; font-size: 14px;
+            resize: none; margin-bottom: 24px; outline: none;
             transition: border-color 0.2s;
         }
-        textarea:focus {
-            border-color: #ef4444;
-        }
+        textarea:focus { border-color: #ef4444; }
         .btn {
-            display: block;
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: block; width: 100%; padding: 14px; border: none;
+            border-radius: 12px; font-weight: 600; font-size: 16px;
+            cursor: pointer; transition: transform 0.2s;
         }
         .btn:active { transform: scale(0.98); }
-        .btn-approve {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #ffffff;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-        .btn-reject {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: #ffffff;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
+        .btn-approve { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
+        .btn-reject  { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
         .icon { font-size: 60px; margin-bottom: 20px; }
         .success-title { color: #10b981; }
-        .error-title { color: #ef4444; }
-        .status-log {
-            font-size: 12px;
-            color: #475569;
-            margin-top: 8px;
-            font-family: monospace;
-            min-height: 18px;
-        }
-        .footer-note {
-            font-size: 13px;
-            color: #64748b;
-            margin-top: 30px;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding-top: 15px;
-        }
+        .error-title   { color: #ef4444; }
+        .status-log { font-size: 11px; color: #334155; margin-top: 8px; font-family: monospace; min-height: 16px; }
+        .footer-note { font-size: 13px; color: #64748b; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; }
     </style>
 </head>
 <body>
@@ -134,117 +76,88 @@
             <h2>Initializing Moderation...</h2>
             <div class="spinner"></div>
             <p>Connecting securely to BharatFlow server.</p>
-            <div class="status-log" id="status-log">Loading libraries...</div>
+            <div class="status-log" id="status-log">Loading...</div>
         </div>
     </div>
 
     <script>
-        // ─── CONFIG ───────────────────────────────────────────────
-        const SUPABASE_URL  = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
-        const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
+        // ─── CONFIG ────────────────────────────────────────────────────────────
+        const SUPABASE_URL   = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
+        const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
         const EXPECTED_TOKEN = 're_XN3oz6b9_Ftg6263oNhDkzkCwZN3JyAvY';
-        // ─────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────
 
-        let supabaseClient = null;
-
-        // Parse URL params
-        const urlParams  = new URLSearchParams(window.location.search);
-        const productId  = urlParams.get('id');
-        const action     = urlParams.get('action');
-        const token      = urlParams.get('token');
-
-        const card       = document.getElementById('portal-card');
-        const statusLog  = document.getElementById('status-log');
+        let db = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+        const action    = urlParams.get('action');
+        const token     = urlParams.get('token');
+        const card      = document.getElementById('portal-card');
+        const statusLog = document.getElementById('status-log');
 
         function log(msg) {
-            if (statusLog) statusLog.textContent = msg;
+            if (statusLog) statusLog.textContent = '› ' + msg;
             console.log('[BharatFlow]', msg);
         }
 
-        // ✅ FIX 2: Wait for Supabase CDN to actually load (poll instead of fixed timeout)
-        function waitForSupabase(maxWaitMs = 8000) {
+        // ─── Poll karo jab tak window.supabase.createClient available na ho ──
+        function waitForSupabase(maxMs = 8000) {
             return new Promise((resolve, reject) => {
                 const start = Date.now();
-                const check = () => {
-                    if (window._supabaseLoadError) {
-                        reject(new Error('Supabase CDN failed to load'));
-                        return;
+                (function check() {
+                    if (window.supabase && typeof window.supabase.createClient === 'function') {
+                        return resolve(window.supabase);
                     }
-                    // ✅ FIX 3: Check both window.supabase AND global supabase
-                    const lib = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
-                    if (lib && typeof lib.createClient === 'function') {
-                        resolve(lib);
-                        return;
-                    }
-                    if (Date.now() - start > maxWaitMs) {
-                        reject(new Error('Supabase load timeout after ' + maxWaitMs + 'ms'));
-                        return;
+                    if (Date.now() - start > maxMs) {
+                        return reject(new Error('Timeout: Supabase ' + maxMs + 'ms mein load nahi hua'));
                     }
                     setTimeout(check, 100);
-                };
-                check();
+                })();
             });
         }
 
         async function init() {
-            log('Step 1: Waiting for Supabase library...');
-
-            let supabaseLib;
+            log('Supabase UMD library load ho raha hai...');
+            let lib;
             try {
-                supabaseLib = await waitForSupabase();
+                lib = await waitForSupabase();
             } catch (e) {
-                renderError('Connection Error ⚠️', 
-                    'Supabase library load nahi hua. Internet connection check karo aur page reload karo.<br><small>' + e.message + '</small>');
-                return;
+                return renderError('Connection Error ⚠️',
+                    'Supabase library load nahi hua. Internet check karo aur reload karo.<br><small>' + e.message + '</small>');
             }
 
-            log('Step 2: Supabase loaded ✓ — Creating client...');
-            supabaseClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
+            log('Library ready ✓ — Supabase client ban raha hai...');
+            db = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-            log('Step 3: Validating secure token...');
-
-            // ✅ FIX 4: Validate all required params
             if (!productId || !action || !token) {
-                renderError('Invalid URL ❌', 
+                return renderError('Invalid URL ❌',
                     'URL mein required parameters missing hain (id, action, token). Original email ka link use karo.');
-                return;
             }
-
             if (token !== EXPECTED_TOKEN) {
-                renderError('Unauthorized Access ❌', 
-                    'Invalid ya expired secure token. Original email mein diya gaya link use karo.');
-                return;
+                return renderError('Unauthorized ❌',
+                    'Token invalid ya expired hai. Original email mein diya gaya link use karo.');
             }
 
-            log('Step 4: Token valid ✓ — Routing action: ' + action);
+            log('Token valid ✓ — Action routing: ' + action);
 
-            if (action === 'approve') {
-                await approveListing();
-            } else if (action === 'reject') {
-                renderRejectForm();
-            } else {
-                renderError('Invalid Action', 
-                    'Action "' + action + '" recognized nahi hua. Sirf "approve" ya "reject" valid hain.');
-            }
+            if (action === 'approve')     await doApprove();
+            else if (action === 'reject') renderRejectForm();
+            else renderError('Invalid Action', '"' + action + '" valid nahi hai. Sirf approve/reject allowed hai.');
         }
 
-        async function approveListing() {
-            log('Step 5: Updating database — approving post ID: ' + productId);
+        async function doApprove() {
+            log('Database update ho raha hai — Post ID: ' + productId);
             try {
-                const { error } = await supabaseClient
+                const { error } = await db
                     .from('store_products')
                     .update({ status: 'approved', rejection_reason: null })
                     .eq('id', productId);
-
                 if (error) throw error;
-
-                renderSuccess(
-                    'Post Approved! 🎉',
-                    'Agricultural listing approve ho gayi aur ab BharatFlow ke public Buy/Sell tabs pe live hai.'
-                );
+                renderSuccess('Post Approved! 🎉',
+                    'Listing approve ho gayi aur ab BharatFlow ke public Buy/Sell tabs pe live hai.');
             } catch (e) {
-                renderError('Operation Failed ⚠️', 
-                    'Post status update nahi hua. Connection check karo aur retry karo.<br><small>Error: ' + e.message + '</small>');
+                renderError('Operation Failed ⚠️',
+                    'Post approve nahi ho saka.<br><small>Error: ' + e.message + '</small>');
             }
         }
 
@@ -253,39 +166,25 @@
                 <div class="icon">📝</div>
                 <h2>Reject Listing</h2>
                 <p>Is post ko reject karne ki wajah likhein. User ko directly unke "My Posts" screen pe ye reason dikhega.</p>
-                <textarea id="rejection-reason" placeholder="Reason likho (e.g. Price too high, Invalid mobile number, Incorrect category)..."></textarea>
-                <button class="btn btn-reject" onclick="submitRejection()">Confirm Rejection (अस्वीकार करें)</button>
+                <textarea id="rej-reason" placeholder="Reason likho (e.g. Price too high, Invalid mobile number, Incorrect category)..."></textarea>
+                <button class="btn btn-reject" onclick="doReject()">Confirm Rejection (अस्वीकार करें)</button>
             `;
         }
 
-        async function submitRejection() {
-            const reason = document.getElementById('rejection-reason').value.trim();
-            if (!reason) {
-                alert('Please enter a rejection reason.');
-                return;
-            }
-
-            card.innerHTML = `
-                <h2>Submitting Rejection...</h2>
-                <div class="spinner"></div>
-                <p>Database mein rejection register ho raha hai...</p>
-            `;
-
+        async function doReject() {
+            const reason = document.getElementById('rej-reason').value.trim();
+            if (!reason) { alert('Rejection reason khali nahi chhod sakte.'); return; }
+            card.innerHTML = `<h2>Submitting...</h2><div class="spinner"></div><p>Database mein rejection register ho raha hai...</p>`;
             try {
-                const { error } = await supabaseClient
+                const { error } = await db
                     .from('store_products')
                     .update({ status: 'rejected', rejection_reason: reason })
                     .eq('id', productId);
-
                 if (error) throw error;
-
-                renderSuccess(
-                    'Post Rejected ❌',
-                    'Agricultural listing reject ho gayi. Reason record ho gaya aur post public marketplace se hide hai.'
-                );
+                renderSuccess('Post Rejected ❌',
+                    'Listing reject ho gayi. Reason record ho gaya aur post marketplace se hide hai.');
             } catch (e) {
-                renderError('Operation Failed ⚠️', 
-                    'Rejection submit nahi hua.<br><small>Error: ' + e.message + '</small>');
+                renderError('Operation Failed ⚠️', 'Rejection submit nahi hua.<br><small>Error: ' + e.message + '</small>');
             }
         }
 
@@ -294,8 +193,7 @@
                 <div class="icon">✨</div>
                 <h2 class="success-title">${title}</h2>
                 <p>${msg}</p>
-                <div class="footer-note">BharatFlow Serverless Moderation Engine — Complete</div>
-            `;
+                <div class="footer-note">BharatFlow Moderation Engine — Complete</div>`;
         }
 
         function renderError(title, msg) {
@@ -303,11 +201,9 @@
                 <div class="icon">⚠️</div>
                 <h2 class="error-title">${title}</h2>
                 <p>${msg}</p>
-                <div class="footer-note">Secure Moderation Portal — Connection Terminated</div>
-            `;
+                <div class="footer-note">Moderation Portal — Terminated</div>`;
         }
 
-        // ✅ FIX 5: Start immediately, no setTimeout delay
         init();
     </script>
 </body>
