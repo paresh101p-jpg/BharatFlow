@@ -126,7 +126,7 @@
     <script>
         const supabaseUrl = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
 
         // Security check parameters
         const expectedToken = 're_XN3oz6b9_Ftg6263oNhDkzkCwZN3JyAvY';
