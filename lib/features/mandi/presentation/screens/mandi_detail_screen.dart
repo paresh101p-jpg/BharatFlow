@@ -343,7 +343,21 @@ class _MandiDetailScreenState extends ConsumerState<MandiDetailScreen>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(img, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: _primary.withOpacity(0.1))),
+                  img.isEmpty
+                      ? Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.all(12),
+                          child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                        )
+                      : Image.network(
+                          img,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                          ),
+                        ),
                   Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.black.withOpacity(0.8), Colors.transparent], begin: Alignment.bottomCenter, end: Alignment.topCenter))),
                   Positioned(bottom: 10, left: 10, right: 10, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(name, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
@@ -393,7 +407,27 @@ class _MandiDetailScreenState extends ConsumerState<MandiDetailScreen>
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.network(img, width: 80, height: 80, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(width: 80, height: 80, color: _primary.withOpacity(0.1), child: const Icon(Icons.grass, color: _primary))),
+              child: img.isEmpty
+                  ? Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(8),
+                      child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                    )
+                  : Image.network(
+                      img,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(8),
+                        child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                      ),
+                    ),
             ),
             const SizedBox(width: 15),
             Expanded(
