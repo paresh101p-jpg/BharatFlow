@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BharatFlow Mandi Intelligence</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --bg: #f8fafc;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .phone-mockup {
+            width: 360px;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .live-dot {
+            width: 8px; height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .search-bar {
+            background: #f1f5f9;
+            padding: 10px 14px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            color: #64748b;
+            margin-bottom: 16px;
+            gap: 8px;
+        }
+        .search-bar input {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 13px;
+            color: #334155;
+            width: 100%;
+        }
+        .sentiment-card {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            padding: 20px;
+            border-radius: 25px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(16,185,129,0.3);
+            margin-bottom: 20px;
+        }
+        .sentiment-card h2 {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 4px 0;
+        }
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .price-box {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 8px;
+            text-align: center;
+        }
+        .price-box .label { font-size: 10px; opacity: 0.85; }
+        .price-box .val { font-size: 14px; font-weight: 700; }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .badge.high { background: #ef4444; color: white; }
+        .badge.medium { background: #f59e0b; color: white; }
+        .badge.low { background: #10b981; color: white; }
+        .badge.bullish { background: #d1fae5; color: #065f46; }
+        .badge.bearish { background: #fee2e2; color: #991b1b; }
+        .badge.neutral { background: #f1f5f9; color: #475569; }
+        .commodity-list { margin-bottom: 20px; }
+        .commodity-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .commodity-row:hover { background: #f8fafc; }
+        .commodity-row .name { font-size: 14px; font-weight: 600; color: #1e293b; }
+        .commodity-row .sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .commodity-row .price { font-size: 15px; font-weight: 700; color: #1e293b; text-align: right; }
+        .news-section { margin-top: 10px; }
+        .section-title { font-weight: 700; font-size: 15px; margin-bottom: 12px; color: #1e293b; }
+        .news-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .news-title { font-weight: 700; font-size: 13px; margin: 6px 0 4px; color: #1e293b; }
+        .news-content { font-size: 12px; color: #64748b; }
+        .loading { text-align: center; color: #94a3b8; font-size: 13px; padding: 20px; }
+        .error { background: #fee2e2; color: #991b1b; border-radius: 12px; padding: 10px 14px; font-size: 12px; margin: 10px 0; }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px 4px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+            font-size: 11px;
+            color: #64748b;
+            cursor: pointer;
+            text-align: center;
+        }
+        .tab-btn.active {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            font-weight: 600;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .khata-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            margin-bottom: 8px;
+        }
+        .khata-row .cr { color: #10b981; font-weight: 700; font-size: 14px; }
+        .khata-row .dr { color: #ef4444; font-weight: 700; font-size: 14px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        .stat-box { background: #f8fafc; border-radius: 14px; padding: 12px; }
+        .stat-box .sl { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+        .stat-box .sv { font-size: 18px; font-weight: 700; }
+        .product-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="phone-mockup">
+    <div class="header">
+        <span style="font-size:20px">🌾</span>
+        <strong style="font-size: 16px;">BharatFlow</strong>
+        <span><span class="live-dot"></span><span style="font-size:11px;color:#10b981" id="sync-time">Syncing...</span></span>
+    </div>
+
+    <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" id="search-input" placeholder="ઉત્પાદન શોધો..." oninput="filterCommodities()">
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('mandi',this)">Mandi</button>
+        <button class="tab-btn" onclick="switchTab('news',this)">Samachar</button>
+        <button class="tab-btn" onclick="switchTab('khata',this)">Khata</button>
+        <button class="tab-btn" onclick="switchTab('store',this)">Store</button>
+    </div>
+
+    <!-- Mandi Tab -->
+    <div id="tab-mandi" class="tab-content active">
+        <div id="hero-card" class="sentiment-card">
+            <div style="font-size:10px;opacity:0.8;text-align:right" id="hero-time">Loading...</div>
+            <h2 id="hero-name">--</h2>
+            <div style="font-size:13px;opacity:0.9" id="hero-mandi">--</div>
+            <div class="price-grid">
+                <div class="price-box"><div class="label">Min</div><div class="val" id="hero-min">--</div></div>
+                <div class="price-box"><div class="label">Modal</div><div class="val" id="hero-modal">--</div></div>
+                <div class="price-box"><div class="label">Max</div><div class="val" id="hero-max">--</div></div>
+            </div>
+        </div>
+        <div class="section-title">બધા ભાવ</div>
+        <div class="commodity-list" id="comm-list">
+            <div class="loading">Data load thaay che...</div>
+        </div>
+    </div>
+
+    <!-- News Tab -->
+    <div id="tab-news" class="tab-content">
+        <div class="section-title">બજાર સમાચાર</div>
+        <div id="news-list"><div class="loading">Samachar aave che...</div></div>
+    </div>
+
+    <!-- Khata Tab -->
+    <div id="tab-khata" class="tab-content">
+        <div class="section-title">ખાતા વ્યવહારો</div>
+        <div class="stat-grid" id="khata-stats"></div>
+        <div id="khata-list"><div class="loading">Khata load thaay che...</div></div>
+    </div>
+
+    <!-- Store Tab -->
+    <div id="tab-store" class="tab-content">
+        <div class="section-title">Store Products</div>
+        <div id="store-list"><div class="loading">Products load thaay che...</div></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let allPrices = [];
+
+function switchTab(name, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+    if (name === 'news') loadNews();
+    if (name === 'khata') loadKhata();
+    if (name === 'store') loadStore();
+}
+
+function sentimentBadge(s) {
+    if (s === 'Bullish') return '<span class="badge bullish">Bullish ↑</span>';
+    if (s === 'Bearish') return '<span class="badge bearish">Bearish ↓</span>';
+    return '<span class="badge neutral">Neutral</span>';
+}
+
+function updateHero(d) {
+    document.getElementById('hero-name').textContent = d.commodity_name;
+    document.getElementById('hero-mandi').textContent = (d.variety || '') + ' · ' + d.mandi_name + ', ' + (d.state || '');
+    document.getElementById('hero-min').textContent = '₹' + Number(d.min_price).toLocaleString('en-IN');
+    document.getElementById('hero-modal').textContent = '₹' + Number(d.modal_price).toLocaleString('en-IN');
+    document.getElementById('hero-max').textContent = '₹' + Number(d.max_price).toLocaleString('en-IN');
+    document.getElementById('hero-time').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderCommodities(data) {
+    if (!data.length) {
+        document.getElementById('comm-list').innerHTML = '<div class="loading">કોઈ ડેટા મળ્યો નથી</div>';
+        return;
+    }
+    document.getElementById('comm-list').innerHTML = data.map((d, i) => `
+        <div class="commodity-row" onclick='updateHero(${JSON.stringify(d).replace(/'/g, "&apos;")})'>
+            <div>
+                <div class="name">${d.commodity_name}</div>
+                <div class="sub">${d.mandi_name} · ${d.district || ''}, ${d.state || ''}</div>
+            </div>
+            <div style="text-align:right">
+                <div class="price">₹${Number(d.modal_price).toLocaleString('en-IN')}</div>
+                ${sentimentBadge(d.sentiment)}
+            </div>
+        </div>`).join('');
+}
+
+function filterCommodities() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const filtered = allPrices.filter(d =>
+        d.commodity_name.toLowerCase().includes(q) ||
+        d.mandi_name.toLowerCase().includes(q) ||
+        (d.state || '').toLowerCase().includes(q)
+    );
+    renderCommodities(filtered);
+}
+
+async function loadMandi() {
+    try {
+        const { data, error } = await db.from('mandi_prices').select('*').order('arrival_date', { ascending: false }).limit(200);
+        if (error) {
+            document.getElementById('comm-list').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            return;
+        }
+        allPrices = data;
+        if (data.length > 0) updateHero(data[0]);
+        renderCommodities(data);
+        document.getElementById('sync-time').textContent = 'Live · ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        document.getElementById('comm-list').innerHTML = `<div class="error">Connection error: ${e.message}</div>`;
+    }
+}
+
+async function loadNews() {
+    const el = document.getElementById('news-list');
+    if (el.dataset.loaded) return;
+    try {
+        const { data, error } = await db.from('market_news').select('*').order('created_at', { ascending: false });
+        if (error) { el.innerHTML = '<div class="error">Samachar aavyo nahi</div>'; return; }
+        el.innerHTML = data.map(n => `
+            <div class="news-card">
+                <span class="badge ${n.impact_level === 'High' ? 'high' : n.impact_level === 'Medium' ? 'medium' : 'low'}">${n.impact_level} · ${n.category}</span>
+                <div class="news-title">${n.title}</div>
+                <div class="news-content">${n.content || ''}</div>
+            </div>`).join('');
+        el.dataset.loaded = '1';
+    } catch (e) {
+        el.innerHTML = `<div class="error">${e.message}</div>`;
+    }
+}
+
+async function loadKhata() {
+    const el = document.getElementById('khata-list');
+    if (el.dataset.loaded) return;
+    try {
+        const { data, error } = await db.from('khata_transactions').select('*').order('transaction_date', { ascending: false });
+        if (error) { el.innerHTML = '<div class="error">Khata aavyo nahi</div>'; return; }
+        const credit = data.filter(d => d.type === 'Credit').reduce((s, d) => s + Number(d.amount), 0);
+        const debit = data.filter(d => d.type === 'Debit').reduce((s, d) => s + Number(d.amount), 0);
+        document.getElementById('khata-stats').innerHTML = `
+            <div class="stat-box"><div class="sl">કુલ આવક</div><div class="sv" style="color:#10b981">₹${credit.toLocaleString('en-IN')}</div></div>
+            <div class="stat-box"><div class="sl">કુલ ખર્ચ</div><div class="sv" style="color:#ef4444">₹${debit.toLocaleString('en-IN')}</div></div>`;
+        el.innerHTML = data.map(d => `
+            <div class="khata-row">
+                <div>
+                    <div class="name" style="font-size:13px;font-weight:600;color:#1e293b">${d.title}</div>
+                    <div style="font-size:11px;color:#94a3b8">${d.category} · ${d.payment_method}</div>
+                </div>
+                <div class="${d.type === 'Credit' ? 'cr' : 'dr'}">${d.type === 'Credit' ? '+' : '-'}₹${Number(d.amount).toLocaleString('en-IN')}</div>
+            </div>`).join('');
+        el.dataset.loaded = '1';
+    } catch (e) {
+        el.innerHTML = `<div class="error">${e.message}</div>`;
+    }
+}
+
+async function loadStore() {
+    const el = document.getElementById('store-list');
+    if (el.dataset.loaded) return;
+    try {
+        const { data, error } = await db.from('store_products').select('*');
+        if (error) { el.innerHTML = '<div class="error">Products avya nahi</div>'; return; }
+        el.innerHTML = data.map(d => `
+            <div class="product-row">
+                <div>
+                    <div class="name" style="font-size:13px;font-weight:600;color:#1e293b">${d.name}</div>
+                    <div style="font-size:11px;color:#94a3b8">${d.category}${d.is_govt_certified ? ' · ✓ Govt Certified' : ''}</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:15px;font-weight:700;color:#1e293b">₹${Number(d.price).toLocaleString('en-IN')}</div>
+                    ${d.discount_pct > 0 ? `<span class="badge bullish">${d.discount_pct}% off</span>` : ''}
+                </div>
+            </div>`).join('');
+        el.dataset.loaded = '1';
+    } catch (e) {
+        el.innerHTML = `<div class="error">${e.message}</div>`;
+    }
+}
+
+loadMandi();
+</script>
+</body>
+</html>

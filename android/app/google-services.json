@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "277298612621",
+    "project_id": "bharatflow-424fb",
+    "storage_bucket": "bharatflow-424fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:277298612621:android:316d70a0447c98e53e55c4",
+        "android_client_info": {
+          "package_name": "com.BharatFlow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "277298612621-m80q2h4ue921aujk0jl8t1gt8b7nspad.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.BharatFlow",
+            "certificate_hash": "e3926256f22ed5891f5b5056c4c19ca8876f708c"
+          }
+        },
+        {
+          "client_id": "277298612621-emnsgoefr2q8b0p3811fgd97jmm60l1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQ5a10VlYeNoqb_ebwTSSDnGrG7AM3fCs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "277298612621-emnsgoefr2q8b0p3811fgd97jmm60l1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

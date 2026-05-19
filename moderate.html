@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BharatFlow Post Moderation Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        h2 {
+            font-size: 26px;
+            font-weight: 800;
+            margin-top: 0;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+        p {
+            font-size: 15px;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            color: #ffffff;
+            padding: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            box-sizing: border-box;
+            margin-bottom: 24px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            border-color: #ef4444;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-approve {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .btn-reject {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        .success-title {
+            color: #10b981;
+        }
+        .error-title {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="portal-card">
+            <h2>Initializing Moderation...</h2>
+            <div class="spinner"></div>
+            <p>Connecting securely to BharatFlow server.</p>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Security check parameters
+        const expectedToken = 're_XN3oz6b9_Ftg6263oNhDkzkCwZN3JyAvY';
+
+        // Parse query params
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+        const action = urlParams.get('action');
+        const token = urlParams.get('token');
+
+        const card = document.getElementById('portal-card');
+
+        async function init() {
+            // 1. Authenticate Token
+            if (token !== expectedToken || !productId || !action) {
+                renderError('Unauthorized Access &#10060;', 'Invalid or expired secure token. Please use the original links provided in your official notification email.');
+                return;
+            }
+
+            // 2. Route Action
+            if (action === 'approve') {
+                await approveListing();
+            } else if (action === 'reject') {
+                renderRejectForm();
+            } else {
+                renderError('Invalid Request', 'The specified action is not recognized.');
+            }
+        }
+
+        async function approveListing() {
+            try {
+                // Update status in store_products
+                const { error } = await supabase
+                    .from('store_products')
+                    .update({ status: 'approved', rejection_reason: null })
+                    .eq('id', productId);
+
+                if (error) throw error;
+
+                renderSuccess('Post Approved Successfully! &#127881;', 'The agricultural listing has been approved and is now live on the public Buy/Sell tabs for all BharatFlow users.');
+            } catch (e) {
+                renderError('Operation Failed &#9888;', 'Could not update post status. Please check connection and try again. Error: ' + e.message);
+            }
+        }
+
+        function renderRejectForm() {
+            card.innerHTML = `
+                <div class="icon">&#128221;</div>
+                <h2>Reject Listing</h2>
+                <p>Please enter the reason for rejecting this post. The user will be notified of this reason directly in their My Posts screen.</p>
+                <textarea id="rejection-reason" placeholder="Enter reason (e.g. Price too high, Invalid mobile number, Incorrect category)..."></textarea>
+                <button class="btn btn-reject" onclick="submitRejection()">Confirm Rejection (&#2309;&#2360;&#2381;&#2357;&#2368;&#2325;&#2366;&#2352; &#2325;&#2352;&#2375;&#2306;)</button>
+            `;
+        }
+
+        async function submitRejection() {
+            const reason = document.getElementById('rejection-reason').value.trim();
+            if (!reason) {
+                alert('Please enter a rejection reason.');
+                return;
+            }
+
+            card.innerHTML = `
+                <h2>Submitting Rejection...</h2>
+                <div class="spinner"></div>
+                <p>Registering rejection state to database.</p>
+            `;
+
+            try {
+                const { error } = await supabase
+                    .from('store_products')
+                    .update({ status: 'rejected', rejection_reason: reason })
+                    .eq('id', productId);
+
+                if (error) throw error;
+
+                renderSuccess('Post Rejected Successfully &#10060;', 'The agricultural listing has been rejected. The reason has been recorded and the post is hidden from the public marketplace.');
+            } catch (e) {
+                renderError('Operation Failed &#9888;', 'Could not submit rejection state. Error: ' + e.message);
+            }
+        }
+
+        function renderSuccess(title, msg) {
+            card.innerHTML = `
+                <div class="icon">&#10024;</div>
+                <h2 class="success-title">${title}</h2>
+                <p>${msg}</p>
+                <div style="font-size: 13px; color: #64748b; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+                    BharatFlow Serverless Moderation Engine &#8212; Complete
+                </div>
+            `;
+        }
+
+        function renderError(title, msg) {
+            card.innerHTML = `
+                <div class="icon">&#9888;</div>
+                <h2 class="error-title">${title}</h2>
+                <p>${msg}</p>
+                <div style="font-size: 13px; color: #64748b; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+                    Secure Moderation Portal &#8212; Connection Terminated
+                </div>
+            `;
+        }
+
+        // Run
+        setTimeout(init, 800);
+    </script>
+</body>
+</html>
