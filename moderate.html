@@ -126,7 +126,7 @@
     <script>
         const supabaseUrl = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        let supabase;
 
         // Security check parameters
         const expectedToken = 're_XN3oz6b9_Ftg6263oNhDkzkCwZN3JyAvY';
@@ -140,6 +140,13 @@
         const card = document.getElementById('portal-card');
 
         async function init() {
+            // Check and initialize Supabase client securely after CDN loads
+            if (!window.supabase) {
+                renderError('Connection Error &#9888;', 'The Supabase library could not be loaded. Please check your internet connection and reload the page.');
+                return;
+            }
+            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
             // 1. Authenticate Token
             if (token !== expectedToken || !productId || !action) {
                 renderError('Unauthorized Access &#10060;', 'Invalid or expired secure token. Please use the original links provided in your official notification email.');
