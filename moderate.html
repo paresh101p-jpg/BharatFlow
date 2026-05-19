@@ -140,6 +140,9 @@
         const card = document.getElementById('portal-card');
 
         async function init() {
+            const statusText = card.querySelector('p');
+            if (statusText) statusText.innerHTML = "Step 1: Initializing Supabase client...";
+
             // Check and initialize Supabase client securely after CDN loads
             if (!window.supabase) {
                 renderError('Connection Error &#9888;', 'The Supabase library could not be loaded. Please check your internet connection and reload the page.');
@@ -147,12 +150,14 @@
             }
             supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+            if (statusText) statusText.innerHTML = "Step 2: Authenticating secure admin token...";
             // 1. Authenticate Token
             if (token !== expectedToken || !productId || !action) {
                 renderError('Unauthorized Access &#10060;', 'Invalid or expired secure token. Please use the original links provided in your official notification email.');
                 return;
             }
 
+            if (statusText) statusText.innerHTML = "Step 3: Routing action '" + action + "'...";
             // 2. Route Action
             if (action === 'approve') {
                 await approveListing();
@@ -164,6 +169,8 @@
         }
 
         async function approveListing() {
+            const statusText = card.querySelector('p');
+            if (statusText) statusText.innerHTML = "Step 4: Connecting to database to approve post ID: " + productId + "...";
             try {
                 // Update status in store_products
                 const { error } = await supabase
