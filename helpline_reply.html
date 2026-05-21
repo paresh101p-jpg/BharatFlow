@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BharatFlow Helpline Expert Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #061c0e, #0c0f0d);
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container { width: 100%; max-width: 550px; padding: 20px; }
+        .card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            padding: 35px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 20px;
+            font-size: 32px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+        h2 { font-size: 24px; font-weight: 800; margin: 0; color: #10b981; letter-spacing: -0.5px; }
+        p.subtitle { font-size: 14px; color: #87a996; margin: 4px 0 0 0; }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #10b981;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            padding-bottom: 5px;
+        }
+
+        .farmer-info {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            font-size: 13px;
+        }
+        .info-label { color: #6b8473; font-weight: 600; margin-bottom: 2px; }
+        .info-value { color: #e2e8f0; font-weight: 800; }
+
+        .question-box {
+            background: rgba(16, 185, 129, 0.05);
+            border-left: 4px solid #10b981;
+            border-radius: 0 16px 16px 0;
+            padding: 18px;
+            margin-bottom: 24px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #f1f5f9;
+        }
+
+        .crop-img-container {
+            margin-bottom: 24px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+        .crop-img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #10b981;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        textarea {
+            width: 100%; height: 140px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            color: #ffffff;
+            padding: 14px;
+            font-family: inherit; font-size: 14px;
+            resize: none; outline: none;
+            transition: all 0.3s;
+        }
+        textarea:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Action Buttons Grid */
+        .actions-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        @media (min-width: 480px) {
+            .actions-container {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        .btn {
+            display: flex; justify-content: center; align-items: center;
+            width: 100%; padding: 16px; border: none;
+            border-radius: 14px; font-weight: 700; font-size: 15px;
+            cursor: pointer; transition: all 0.3s;
+            color: #fff;
+            font-family: inherit;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled {
+            background: #2d3748 !important;
+            color: #718096 !important;
+            cursor: not-allowed;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+        .btn-submit:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.25);
+        }
+        .btn-reject:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal-card {
+            background: #0f1712;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 480px;
+            padding: 30px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+            animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .modal-icon {
+            font-size: 36px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .modal-card h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            color: #ef4444;
+        }
+        .modal-subtitle {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            color: #87a996;
+        }
+        .quick-reasons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .reason-chip {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .reason-chip:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #fff;
+        }
+        .reason-chip.selected {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
+        }
+        .modal-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .modal-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            color: #cbd5e1;
+        }
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+        .modal-btn-confirm:hover {
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+        }
+
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid rgba(16, 185, 129, 0.1);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 40px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .status-log { font-size: 12px; color: #4a5568; margin-top: 15px; font-family: monospace; text-align: center; }
+        .success-card, .error-card { text-align: center; padding: 20px 0; }
+        .success-icon { font-size: 64px; color: #10b981; margin-bottom: 20px; animation: scaleUp 0.5s ease-out; }
+        .error-icon { font-size: 64px; color: #ef4444; margin-bottom: 20px; animation: scaleUp 0.5s ease-out; }
+        
+        @keyframes scaleUp {
+            from { transform: scale(0.7); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .footer-note {
+            font-size: 12px; color: #4a5d51; text-align: center; margin-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="portal-card">
+            <div class="header">
+                <div class="logo-badge">🌾</div>
+                <h2>Helpline Expert Portal</h2>
+                <p class="subtitle">Connecting farmers with immediate agricultural expertise</p>
+            </div>
+            
+            <div id="loader">
+                <div class="spinner"></div>
+                <div class="status-log" id="status-log">Loading secure connection...</div>
+            </div>
+
+            <div id="main-content" style="display: none;">
+                <div class="section-title">Farmer Details (किसान का विवरण)</div>
+                <div class="farmer-info">
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">Farmer Name (किसान का नाम)</div>
+                            <div class="info-value" id="farmer-name">-</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Category (श्रेणी)</div>
+                            <div class="info-value" id="question-category">-</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Location (स्थान)</div>
+                            <div class="info-value" id="farmer-location">-</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Date (दिनांक)</div>
+                            <div class="info-value" id="question-date">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">Farmer Question (किसान का सवाल)</div>
+                <div class="question-box" id="question-text">-</div>
+
+                <div id="crop-photo-section" style="display: none;">
+                    <div class="section-title">Crop Photo Attachment (फसल का फोटो)</div>
+                    <div class="crop-img-container">
+                        <img class="crop-img" id="crop-image" src="" alt="Crop attachment">
+                    </div>
+                </div>
+
+                <div class="section-title">Write Expert Answer (विशेषज्ञ का जवाब)</div>
+                <div class="input-group">
+                    <label for="answer-input">Your Solution (आपका समाधान)</label>
+                    <textarea id="answer-input" placeholder="फसल के रोग या समस्या का वैज्ञानिक समाधान यहाँ विस्तार से लिखें (e.g. Copper Oxychloride 2g/L paani mein daalkar chhidkaav karein)..."></textarea>
+                </div>
+
+                <div class="actions-container">
+                    <button class="btn btn-submit" id="submit-btn" onclick="submitAnswer()">
+                        Send Answer (किसान को उत्तर भेजें)
+                    </button>
+                    <button class="btn btn-reject" id="reject-btn" onclick="openRejectModal()">
+                        Reject Question (अस्वीकार करें)
+                    </button>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                BharatFlow Secure Helpline Moderation Gateway
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div id="reject-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span class="modal-icon">⚠️</span>
+                <h3>Reject Question</h3>
+                <p class="modal-subtitle">अस्वीकृति का कारण दर्ज करें</p>
+            </div>
+            <div class="modal-body">
+                <label style="color: #ef4444; font-size: 11px;">Select Quick Reason (त्वरित कारण चुनें):</label>
+                <div class="quick-reasons">
+                    <button class="reason-chip" onclick="selectQuickReason('Blurry photo. Please capture a clear, close-up photo of the affected crop area. / धुंधली फोटो। कृपया फसल के प्रभावित हिस्से की साफ और स्पष्ट फोटो लें।', event)">📷 Blurry Photo</button>
+                    <button class="reason-chip" onclick="selectQuickReason('Irrelevant question. Please ask questions related to agriculture, crops, or mandi prices only. / अप्रासंगिक सवाल। कृपया केवल खेती-बाड़ी, फसल या मंडी भाव से जुड़े सवाल ही पूछें।', event)">🌾 Irrelevant Topic</button>
+                    <button class="reason-chip" onclick="selectQuickReason('Incomplete details. Please specify crop name and details of the disease. / अधूरी जानकारी। कृपया फसल का नाम और बीमारी के लक्षण स्पष्ट रूप से बताएं।', event)">ℹ️ Incomplete Details</button>
+                </div>
+                
+                <label for="reject-reason-input" style="color: #ef4444; font-size: 11px; margin-top: 15px;">Custom Rejection Reason (अस्वीकृति का कारण):</label>
+                <textarea id="reject-reason-input" placeholder="अस्वीकृति का कारण विस्तार से लिखें..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-cancel" onclick="closeRejectModal()">Cancel (रद्द करें)</button>
+                <button class="modal-btn modal-btn-confirm" id="confirm-reject-btn" onclick="submitRejection()">Confirm Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── CONFIG ────────────────────────────────────────────────────────────
+        const SUPABASE_URL   = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
+        const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
+        const EXPECTED_TOKEN = 're_XN3oz6b9_Ftg6263oNhDkzkCwZN3JyAvY';
+        // ──────────────────────────────────────────────────────────────────────
+
+        let db = null;
+        let questionData = null;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const questionId = urlParams.get('id');
+        const token      = urlParams.get('token');
+        
+        const loader = document.getElementById('loader');
+        const mainContent = document.getElementById('main-content');
+        const statusLog = document.getElementById('status-log');
+        const portalCard = document.getElementById('portal-card');
+
+        function log(msg) {
+            if (statusLog) statusLog.textContent = msg;
+            console.log('[Helpline Portal]', msg);
+        }
+
+        function waitForSupabase(maxMs = 8000) {
+            return new Promise((resolve, reject) => {
+                const start = Date.now();
+                (function check() {
+                    if (window.supabase && typeof window.supabase.createClient === 'function') {
+                        return resolve(window.supabase);
+                    }
+                    if (Date.now() - start > maxMs) {
+                        return reject(new Error('Supabase client failed to load in time.'));
+                    }
+                    setTimeout(check, 100);
+                })();
+            });
+        }
+
+        async function init() {
+            try {
+                if (!questionId || !token) {
+                    return showFatalError('Invalid Link ❌', 'URL is missing key parameters (id/token). Please check your email link.');
+                }
+                if (token !== EXPECTED_TOKEN) {
+                    return showFatalError('Access Denied 🔒', 'Your secure authentication token is invalid or expired.');
+                }
+
+                log('Connecting to database...');
+                const lib = await waitForSupabase();
+                db = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+                log('Fetching question details...');
+                const { data, error } = await db
+                    .from('helpline_questions')
+                    .select('*')
+                    .eq('id', questionId)
+                    .single();
+
+                if (error || !data) {
+                    throw new Error(error ? error.message : 'Question not found');
+                }
+
+                questionData = data;
+
+                // Bind data to UI
+                document.getElementById('farmer-name').textContent = data.user_name;
+                
+                // Map category key to readable labels
+                const categoriesMap = {
+                    'crop_disease': '🌾 Crop Disease / फसल रोग',
+                    'mandi_bhav': '📈 Mandi Bhav / मंडी भाव',
+                    'mausam': '🌦️ Weather / मौसम',
+                    'govt_schemes': '📜 Govt Schemes / सरकारी योजनाएं',
+                    'other': '⚙️ Other / अन्य'
+                };
+                document.getElementById('question-category').textContent = categoriesMap[data.category] || data.category;
+                
+                document.getElementById('farmer-location').textContent = `${data.user_city || 'Surat'}, ${data.user_state || 'Gujarat'}`;
+                
+                const createdDate = new Date(data.created_at);
+                document.getElementById('question-date').textContent = createdDate.toLocaleDateString('en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                
+                document.getElementById('question-text').textContent = data.question_text;
+
+                // Show Image if attached
+                if (data.image_url && data.image_url.trim().length > 0) {
+                    document.getElementById('crop-image').src = data.image_url;
+                    document.getElementById('crop-photo-section').style.display = 'block';
+                }
+
+                // If already replied or rejected, populate the values
+                if (data.answer_text) {
+                    if (data.status === 'Rejected') {
+                        document.getElementById('answer-input').value = '';
+                        // Show rejection banner inside main container
+                        const banner = document.createElement('div');
+                        banner.style.background = 'rgba(239, 68, 68, 0.1)';
+                        banner.style.border = '1px solid rgba(239, 68, 68, 0.25)';
+                        banner.style.borderRadius = '16px';
+                        banner.style.padding = '16px';
+                        banner.style.marginBottom = '24px';
+                        banner.style.color = '#fca5a5';
+                        banner.style.fontSize = '13.5px';
+                        banner.style.lineHeight = '1.5';
+                        banner.innerHTML = `<strong>⚠️ Previously Rejected / पहले अस्वीकृत किया गया:</strong><br>${data.answer_text}`;
+                        mainContent.insertBefore(banner, mainContent.firstChild);
+                        
+                        document.getElementById('submit-btn').textContent = 'Send Answer (उत्तर में बदलें)';
+                    } else {
+                        document.getElementById('answer-input').value = data.answer_text;
+                        document.getElementById('submit-btn').textContent = 'Update Answer (उत्तर अपडेट करें)';
+                    }
+                }
+
+                // Hide loader and show main content
+                loader.style.display = 'none';
+                mainContent.style.display = 'block';
+
+            } catch (err) {
+                showFatalError('Loading Failed ⚠️', `Unable to fetch details from server: ${err.message}`);
+            }
+        }
+
+        async function submitAnswer() {
+            const answerInput = document.getElementById('answer-input');
+            const answerText = answerInput.value.trim();
+            const submitBtn = document.getElementById('submit-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+
+            if (!answerText) {
+                alert('Please enter your answer text first! (कृपया उत्तर लिखें!)');
+                return;
+            }
+
+            try {
+                submitBtn.disabled = true;
+                rejectBtn.disabled = true;
+                submitBtn.textContent = 'Submitting Answer...';
+
+                const { error } = await db
+                    .from('helpline_questions')
+                    .update({
+                        status: 'Replied',
+                        answer_text: answerText,
+                        replied_at: new Date().toISOString()
+                    })
+                    .eq('id', questionId);
+
+                if (error) throw error;
+
+                // Show gloriously styled success message
+                portalCard.innerHTML = `
+                    <div class="success-card">
+                        <div class="success-icon">✓</div>
+                        <h2 class="success-title">Answer Sent Successfully!</h2>
+                        <p style="color: #87a996; font-size: 15px; margin-top: 10px; line-height: 1.5;">
+                            Ramu Bhai / Kisan has been notified inside the app! Your expert answer is now live on their ticket dashboard and anonymized on the Community Forum.
+                        </p>
+                        <div class="footer-note" style="margin-top: 40px;">
+                            BharatFlow Helpline Moderation Portal
+                        </div>
+                    </div>
+                `;
+
+            } catch (err) {
+                alert(`Error submitting answer: ${err.message}`);
+                submitBtn.disabled = false;
+                rejectBtn.disabled = false;
+                submitBtn.textContent = 'Send Answer (किसान को उत्तर भेजें)';
+            }
+        }
+
+        // Modal Controls
+        function openRejectModal() {
+            document.getElementById('reject-modal').style.display = 'flex';
+            document.getElementById('reject-reason-input').value = '';
+            
+            // Clear selections
+            const chips = document.querySelectorAll('.reason-chip');
+            chips.forEach(chip => chip.classList.remove('selected'));
+        }
+
+        function closeRejectModal() {
+            document.getElementById('reject-modal').style.display = 'none';
+        }
+
+        function selectQuickReason(text, event) {
+            // Unselect others
+            const chips = document.querySelectorAll('.reason-chip');
+            chips.forEach(chip => chip.classList.remove('selected'));
+            
+            // Select current
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('selected');
+            }
+            
+            document.getElementById('reject-reason-input').value = text;
+        }
+
+        async function submitRejection() {
+            const reasonInput = document.getElementById('reject-reason-input');
+            const reasonText = reasonInput.value.trim();
+            const confirmBtn = document.getElementById('confirm-reject-btn');
+
+            if (!reasonText) {
+                alert('Please enter a rejection reason! (कृपया अस्वीकृति का कारण लिखें!)');
+                return;
+            }
+
+            try {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Rejecting...';
+
+                const { error } = await db
+                    .from('helpline_questions')
+                    .update({
+                        status: 'Rejected',
+                        answer_text: reasonText,
+                        replied_at: new Date().toISOString()
+                    })
+                    .eq('id', questionId);
+
+                if (error) throw error;
+
+                closeRejectModal();
+
+                // Show gloriously styled rejection success message
+                portalCard.innerHTML = `
+                    <div class="success-card" style="padding: 20px 0;">
+                        <div class="error-icon" style="color: #ef4444; font-size: 64px; margin-bottom: 20px; animation: scaleUp 0.5s ease-out;">✗</div>
+                        <h2 class="error-title" style="color: #ef4444; font-weight: 800; font-size: 24px; margin: 0;">Question Rejected Successfully!</h2>
+                        <p style="color: #87a996; font-size: 15px; margin-top: 12px; line-height: 1.5; padding: 0 10px;">
+                            The ticket has been marked as Rejected. The farmer has been notified inside the app and can view the reason for rejection:
+                        </p>
+                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px; padding: 14px; margin: 18px 10px 0 10px; color: #fca5a5; font-size: 13.5px; text-align: left; line-height: 1.4;">
+                            <strong>Reason (कारण):</strong> ${reasonText}
+                        </div>
+                        <div class="footer-note" style="margin-top: 40px;">
+                            BharatFlow Helpline Moderation Portal
+                        </div>
+                    </div>
+                `;
+
+            } catch (err) {
+                alert(`Error rejecting question: ${err.message}`);
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm Reject';
+            }
+        }
+
+        function showFatalError(title, message) {
+            loader.style.display = 'none';
+            mainContent.style.display = 'none';
+            portalCard.innerHTML = `
+                <div class="error-card">
+                    <div class="error-icon">⚠️</div>
+                    <h2 class="error-title">${title}</h2>
+                    <p style="color: #cbd5e1; font-size: 14px; margin-top: 10px;">${message}</p>
+                    <div class="footer-note" style="margin-top: 40px;">
+                        BharatFlow Helpline Moderation Portal
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize Page
+        init();
+    </script>
+</body>
+</html>
