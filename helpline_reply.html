@@ -20,7 +20,7 @@
             align-items: center;
             min-height: 100vh;
         }
-        .container { width: 100%; max-width: 550px; padding: 20px; }
+        .container { width: 100%; max-width: 900px; padding: 20px; }
         .card {
             background: rgba(255, 255, 255, 0.02);
             backdrop-filter: blur(25px);
@@ -134,19 +134,40 @@
             background: rgba(0, 0, 0, 0.4);
         }
 
-        /* Action Buttons Grid */
         .actions-container {
             display: grid;
             grid-template-columns: 1fr;
             gap: 12px;
-            margin-top: 10px;
-        }
-        @media (min-width: 480px) {
-            .actions-container {
-                grid-template-columns: 2fr 1fr;
-            }
+            margin-top: 20px;
         }
 
+        /* Desktop Grid Layout */
+        @media (min-width: 768px) {
+            #main-content {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
+                align-items: start;
+            }
+            .left-column {
+                display: flex;
+                flex-direction: column;
+            }
+            .right-column {
+                display: flex;
+                flex-direction: column;
+                background: rgba(16, 185, 129, 0.02);
+                border: 1px solid rgba(16, 185, 129, 0.1);
+                border-radius: 20px;
+                padding: 20px;
+            }
+            .actions-container {
+                grid-template-columns: 1fr;
+            }
+            .btn-full-desktop {
+                grid-column: span 1;
+            }
+        }
         .btn {
             display: flex; justify-content: center; align-items: center;
             width: 100%; padding: 16px; border: none;
@@ -181,6 +202,14 @@
         }
         .btn-reject:hover {
             box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
+        }
+        .btn-approve:hover {
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.35);
         }
 
         /* Modal Styles */
@@ -327,55 +356,62 @@
             </div>
 
             <div id="main-content" style="display: none;">
-                <div class="section-title">Farmer Details (किसान का विवरण)</div>
-                <div class="farmer-info">
-                    <div class="info-grid">
-                        <div>
-                            <div class="info-label">Farmer Name (किसान का नाम)</div>
-                            <div class="info-value" id="farmer-name">-</div>
+                <div class="left-column">
+                    <div class="section-title">Farmer Details (किसान का विवरण)</div>
+                    <div class="farmer-info">
+                        <div class="info-grid">
+                            <div>
+                                <div class="info-label">Farmer Name (किसान का नाम)</div>
+                                <div class="info-value" id="farmer-name">-</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Category (श्रेणी)</div>
+                                <div class="info-value" id="question-category">-</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Location (स्थान)</div>
+                                <div class="info-value" id="farmer-location">-</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Date (दिनांक)</div>
+                                <div class="info-value" id="question-date">-</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="info-label">Category (श्रेणी)</div>
-                            <div class="info-value" id="question-category">-</div>
-                        </div>
-                        <div>
-                            <div class="info-label">Location (स्थान)</div>
-                            <div class="info-value" id="farmer-location">-</div>
-                        </div>
-                        <div>
-                            <div class="info-label">Date (दिनांक)</div>
-                            <div class="info-value" id="question-date">-</div>
+                    </div>
+
+                    <div class="section-title">Farmer Question (किसान का सवाल)</div>
+                    <div class="question-box" id="question-text">-</div>
+
+                    <div id="crop-photo-section" style="display: none;">
+                        <div class="section-title">Crop Photo Attachment (फसल का फोटो)</div>
+                        <div class="crop-img-container">
+                            <img class="crop-img" id="crop-image" src="" alt="Crop attachment">
                         </div>
                     </div>
                 </div>
 
-                <div class="section-title">Farmer Question (किसान का सवाल)</div>
-                <div class="question-box" id="question-text">-</div>
-
-                <div id="crop-photo-section" style="display: none;">
-                    <div class="section-title">Crop Photo Attachment (फसल का फोटो)</div>
-                    <div class="crop-img-container">
-                        <img class="crop-img" id="crop-image" src="" alt="Crop attachment">
+                <div class="right-column" id="action-column">
+                    <div class="section-title">Write Expert Answer (विशेषज्ञ का जवाब)</div>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <label for="expert-name-input">Expert Name (विशेषज्ञ का नाम)</label>
+                        <input type="text" id="expert-name-input" value="Dr. Sanjay Verma" placeholder="Enter expert name (विशेषज्ञ का नाम दर्ज करें)...">
                     </div>
-                </div>
+                    <div class="input-group">
+                        <label for="answer-input">Your Solution (आपका समाधान)</label>
+                        <textarea id="answer-input" placeholder="फसल के रोग या समस्या का वैज्ञानिक समाधान यहाँ विस्तार से लिखें (e.g. Copper Oxychloride 2g/L paani mein daalkar chhidkaav karein)..."></textarea>
+                    </div>
 
-                <div class="section-title">Write Expert Answer (विशेषज्ञ का जवाब)</div>
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label for="expert-name-input">Expert Name (विशेषज्ञ का नाम)</label>
-                    <input type="text" id="expert-name-input" value="Dr. Sanjay Verma" placeholder="Enter expert name (विशेषज्ञ का नाम दर्ज करें)...">
-                </div>
-                <div class="input-group">
-                    <label for="answer-input">Your Solution (आपका समाधान)</label>
-                    <textarea id="answer-input" placeholder="फसल के रोग या समस्या का वैज्ञानिक समाधान यहाँ विस्तार से लिखें (e.g. Copper Oxychloride 2g/L paani mein daalkar chhidkaav karein)..."></textarea>
-                </div>
-
-                <div class="actions-container">
-                    <button class="btn btn-submit" id="submit-btn" onclick="submitAnswer()">
-                        Send Answer (किसान को उत्तर भेजें)
-                    </button>
-                    <button class="btn btn-reject" id="reject-btn" onclick="openRejectModal()">
-                        Reject Question (अस्वीकार करें)
-                    </button>
+                    <div class="actions-container">
+                        <button class="btn btn-submit btn-full-desktop" id="submit-btn" onclick="submitAnswer()">
+                            Send Answer (किसान को उत्तर भेजें)
+                        </button>
+                        <button class="btn btn-approve" id="approve-btn" onclick="approveQuestion()">
+                            Approve Question (चौपाल में भेजें)
+                        </button>
+                        <button class="btn btn-reject" id="reject-btn" onclick="openRejectModal()">
+                            Reject Question (अस्वीकार करें)
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -515,28 +551,41 @@
                     document.getElementById('expert-name-input').value = 'Dr. Sanjay Verma';
                 }
 
-                // If already replied or rejected, populate the values
-                if (data.answer_text) {
-                    if (data.status === 'Rejected') {
-                        document.getElementById('answer-input').value = '';
-                        // Show rejection banner inside main container
-                        const banner = document.createElement('div');
-                        banner.style.background = 'rgba(239, 68, 68, 0.1)';
-                        banner.style.border = '1px solid rgba(239, 68, 68, 0.25)';
-                        banner.style.borderRadius = '16px';
-                        banner.style.padding = '16px';
-                        banner.style.marginBottom = '24px';
-                        banner.style.color = '#fca5a5';
-                        banner.style.fontSize = '13.5px';
-                        banner.style.lineHeight = '1.5';
-                        banner.innerHTML = `<strong>⚠️ Previously Rejected / पहले अस्वीकृत किया गया:</strong><br>${data.answer_text}`;
-                        mainContent.insertBefore(banner, mainContent.firstChild);
-                        
-                        document.getElementById('submit-btn').textContent = 'Send Answer (उत्तर में बदलें)';
-                    } else {
-                        document.getElementById('answer-input').value = data.answer_text;
-                        document.getElementById('submit-btn').textContent = 'Update Answer (उत्तर अपडेट करें)';
-                    }
+                // If already replied or rejected or approved, populate the values
+                if (data.status === 'Replied') {
+                    document.getElementById('answer-input').value = data.answer_text || '';
+                    document.getElementById('submit-btn').textContent = 'Update Answer (उत्तर अपडेट करें)';
+                } else if (data.status === 'Rejected') {
+                    document.getElementById('answer-input').value = '';
+                    const banner = document.createElement('div');
+                    banner.style.background = 'rgba(239, 68, 68, 0.1)';
+                    banner.style.border = '1px solid rgba(239, 68, 68, 0.25)';
+                    banner.style.borderRadius = '16px';
+                    banner.style.padding = '16px';
+                    banner.style.marginBottom = '24px';
+                    banner.style.color = '#fca5a5';
+                    banner.style.fontSize = '13.5px';
+                    banner.style.lineHeight = '1.5';
+                    const actionCol = document.getElementById('action-column') || mainContent;
+                    actionCol.insertBefore(banner, actionCol.firstChild);
+                    
+                    document.getElementById('submit-btn').textContent = 'Send Answer (उत्तर में बदलें)';
+                } else if (data.status === 'Approved') {
+                    document.getElementById('answer-input').value = '';
+                    const banner = document.createElement('div');
+                    banner.style.background = 'rgba(59, 130, 246, 0.1)';
+                    banner.style.border = '1px solid rgba(59, 130, 246, 0.25)';
+                    banner.style.borderRadius = '16px';
+                    banner.style.padding = '16px';
+                    banner.style.marginBottom = '24px';
+                    banner.style.color = '#93c5fd';
+                    banner.style.fontSize = '13.5px';
+                    banner.style.lineHeight = '1.5';
+                    const actionCol = document.getElementById('action-column') || mainContent;
+                    actionCol.insertBefore(banner, actionCol.firstChild);
+                    
+                    document.getElementById('submit-btn').textContent = 'Send Answer (विशेषज्ञ उत्तर भेजें)';
+                    document.getElementById('approve-btn').style.display = 'none';
                 }
 
                 // Hide loader and show main content
@@ -555,6 +604,7 @@
             const expertName = expertNameInput ? expertNameInput.value.trim() : 'Dr. Sanjay Verma';
             const submitBtn = document.getElementById('submit-btn');
             const rejectBtn = document.getElementById('reject-btn');
+            const approveBtn = document.getElementById('approve-btn');
 
             if (!answerText) {
                 alert('Please enter your answer text first! (कृपया उत्तर लिखें!)');
@@ -564,6 +614,7 @@
             try {
                 submitBtn.disabled = true;
                 rejectBtn.disabled = true;
+                if (approveBtn) approveBtn.disabled = true;
                 submitBtn.textContent = 'Submitting Answer...';
 
                 const { error } = await db
@@ -596,6 +647,7 @@
                 alert(`Error submitting answer: ${err.message}`);
                 submitBtn.disabled = false;
                 rejectBtn.disabled = false;
+                if (approveBtn) approveBtn.disabled = false;
                 submitBtn.textContent = 'Send Answer (किसान को उत्तर भेजें)';
             }
         }
@@ -633,6 +685,9 @@
             const expertNameInput = document.getElementById('expert-name-input');
             const expertName = expertNameInput ? expertNameInput.value.trim() : 'Dr. Sanjay Verma';
             const confirmBtn = document.getElementById('confirm-reject-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+            const approveBtn = document.getElementById('approve-btn');
 
             if (!reasonText) {
                 alert('Please enter a rejection reason! (कृपया अस्वीकृति का कारण लिखें!)');
@@ -642,6 +697,9 @@
             try {
                 confirmBtn.disabled = true;
                 confirmBtn.textContent = 'Rejecting...';
+                if (submitBtn) submitBtn.disabled = true;
+                if (rejectBtn) rejectBtn.disabled = true;
+                if (approveBtn) approveBtn.disabled = true;
 
                 const { error } = await db
                     .from('helpline_questions')
@@ -678,6 +736,56 @@
                 alert(`Error rejecting question: ${err.message}`);
                 confirmBtn.disabled = false;
                 confirmBtn.textContent = 'Confirm Reject';
+                if (submitBtn) submitBtn.disabled = false;
+                if (rejectBtn) rejectBtn.disabled = false;
+                if (approveBtn) approveBtn.disabled = false;
+            }
+        }
+
+        async function approveQuestion() {
+            const submitBtn = document.getElementById('submit-btn');
+            const approveBtn = document.getElementById('approve-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+            const expertNameInput = document.getElementById('expert-name-input');
+            const expertName = expertNameInput ? expertNameInput.value.trim() : 'Dr. Sanjay Verma';
+
+            try {
+                submitBtn.disabled = true;
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                approveBtn.textContent = 'Approving...';
+
+                const { error } = await db
+                    .from('helpline_questions')
+                    .update({
+                        status: 'Approved',
+                        expert_name: expertName || 'Dr. Sanjay Verma',
+                        replied_at: new Date().toISOString()
+                    })
+                    .eq('id', questionId);
+
+                if (error) throw error;
+
+                // Show gloriously styled success message
+                portalCard.innerHTML = `
+                    <div class="success-card">
+                        <div class="success-icon" style="color: #3b82f6;">✓</div>
+                        <h2 class="success-title" style="color: #3b82f6;">Question Approved for Community!</h2>
+                        <p style="color: #87a996; font-size: 15px; margin-top: 10px; line-height: 1.5;">
+                            This question has been successfully approved without an answer. It is now live in the Community Forum / चौपाल tab where other farmers can view and answer it!
+                        </p>
+                        <div class="footer-note" style="margin-top: 40px;">
+                            BharatFlow Helpline Moderation Portal
+                        </div>
+                    </div>
+                `;
+
+            } catch (err) {
+                alert(`Error approving question: ${err.message}`);
+                submitBtn.disabled = false;
+                approveBtn.disabled = false;
+                rejectBtn.disabled = false;
+                approveBtn.textContent = 'Approve Question (चौपाल में भेजें)';
             }
         }
 
