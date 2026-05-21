@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/settings_provider.dart';
 import '../providers/helpline_provider.dart';
@@ -2029,15 +2030,15 @@ class _ForumQuestionCardState extends State<_ForumQuestionCard> {
                 // Share button
                 IconButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          widget.isHindi
-                              ? 'सलाह साझा की जा रही है...'
-                              : 'Sharing advice...',
-                        ),
-                        duration: const Duration(seconds: 1),
-                      ),
+                    final shareText = widget.isHindi
+                        ? '''🌾 *भारतफ्लो कृषि समाधान (BharatFlow Helpline)* 🌾\n\n📝 *किसान का सवाल:*\n"$text"\n\n🙋 *किसान का स्थान:* $city, $state\n\n👨‍🔬 *कृषि विशेषज्ञ का वैज्ञानिक समाधान:*\n"$answerText"\n\n👉 इस तरह के और वैज्ञानिक समाधान और मंडी भाव जानने के लिए आज ही *BharatFlow App* डाउनलोड करें:\nhttps://play.google.com/store/apps/details?id=com.bharat_flow'''
+                        : '''🌾 *BharatFlow Agriculture Helpline* 🌾\n\n📝 *Farmer's Query:*\n"$text"\n\n📍 *Farmer Location:* $city, $state\n\n👨‍🔬 *Agri Expert Verified Solution:*\n"$answerText"\n\n👉 For more agricultural solutions and live mandi rates, download the *BharatFlow App* now:\nhttps://play.google.com/store/apps/details?id=com.bharat_flow''';
+
+                    Share.share(
+                      shareText,
+                      subject: widget.isHindi
+                          ? 'भारतफ्लो कृषि विशेषज्ञ समाधान'
+                          : 'BharatFlow Agri Expert Verified Solution',
                     );
                   },
                   icon: const Icon(
