@@ -459,16 +459,20 @@
                 db = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
 
                 log('Fetching question details...');
-                const { data, error } = await db
+                const { data: rows, error } = await db
                     .from('helpline_questions')
                     .select('*')
-                    .eq('id', questionId)
-                    .single();
+                    .eq('id', questionId);
 
-                if (error || !data) {
-                    throw new Error(error ? error.message : 'Question not found');
+                if (error) {
+                    throw error;
                 }
 
+                if (!rows || rows.length === 0) {
+                    return showFatalError('Question Not Found 🌾', 'This question has been deleted by the farmer or does not exist. <br>(यह सवाल किसान द्वारा हटा दिया गया है या मौजूद नहीं है।)');
+                }
+
+                const data = rows[0];
                 questionData = data;
 
                 // Bind data to UI
