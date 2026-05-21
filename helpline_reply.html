@@ -116,18 +116,19 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        textarea {
-            width: 100%; height: 140px;
+        textarea, input[type="text"] {
+            width: 100%;
             background: rgba(0, 0, 0, 0.3);
             border: 1.5px solid rgba(255, 255, 255, 0.12);
             border-radius: 14px;
             color: #ffffff;
             padding: 14px;
             font-family: inherit; font-size: 14px;
-            resize: none; outline: none;
+            outline: none;
             transition: all 0.3s;
         }
-        textarea:focus {
+        textarea { height: 140px; resize: none; }
+        textarea:focus, input[type="text"]:focus {
             border-color: #10b981;
             box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
             background: rgba(0, 0, 0, 0.4);
@@ -359,6 +360,10 @@
                 </div>
 
                 <div class="section-title">Write Expert Answer (विशेषज्ञ का जवाब)</div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="expert-name-input">Expert Name (विशेषज्ञ का नाम)</label>
+                    <input type="text" id="expert-name-input" value="Dr. Sanjay Verma" placeholder="Enter expert name (विशेषज्ञ का नाम दर्ज करें)...">
+                </div>
                 <div class="input-group">
                     <label for="answer-input">Your Solution (आपका समाधान)</label>
                     <textarea id="answer-input" placeholder="फसल के रोग या समस्या का वैज्ञानिक समाधान यहाँ विस्तार से लिखें (e.g. Copper Oxychloride 2g/L paani mein daalkar chhidkaav karein)..."></textarea>
@@ -503,6 +508,13 @@
                     document.getElementById('crop-photo-section').style.display = 'block';
                 }
 
+                // Populate expert name if it exists in DB, otherwise default to Dr. Sanjay Verma
+                if (data.expert_name && data.expert_name.trim().length > 0) {
+                    document.getElementById('expert-name-input').value = data.expert_name;
+                } else {
+                    document.getElementById('expert-name-input').value = 'Dr. Sanjay Verma';
+                }
+
                 // If already replied or rejected, populate the values
                 if (data.answer_text) {
                     if (data.status === 'Rejected') {
@@ -539,6 +551,8 @@
         async function submitAnswer() {
             const answerInput = document.getElementById('answer-input');
             const answerText = answerInput.value.trim();
+            const expertNameInput = document.getElementById('expert-name-input');
+            const expertName = expertNameInput ? expertNameInput.value.trim() : 'Dr. Sanjay Verma';
             const submitBtn = document.getElementById('submit-btn');
             const rejectBtn = document.getElementById('reject-btn');
 
@@ -557,6 +571,7 @@
                     .update({
                         status: 'Replied',
                         answer_text: answerText,
+                        expert_name: expertName || 'Dr. Sanjay Verma',
                         replied_at: new Date().toISOString()
                     })
                     .eq('id', questionId);
@@ -615,6 +630,8 @@
         async function submitRejection() {
             const reasonInput = document.getElementById('reject-reason-input');
             const reasonText = reasonInput.value.trim();
+            const expertNameInput = document.getElementById('expert-name-input');
+            const expertName = expertNameInput ? expertNameInput.value.trim() : 'Dr. Sanjay Verma';
             const confirmBtn = document.getElementById('confirm-reject-btn');
 
             if (!reasonText) {
@@ -631,6 +648,7 @@
                     .update({
                         status: 'Rejected',
                         answer_text: reasonText,
+                        expert_name: expertName || 'Dr. Sanjay Verma',
                         replied_at: new Date().toISOString()
                     })
                     .eq('id', questionId);

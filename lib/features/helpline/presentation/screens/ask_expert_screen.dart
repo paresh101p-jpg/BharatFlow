@@ -1605,9 +1605,11 @@ class _PersonalQuestionCardState extends ConsumerState<_PersonalQuestionCard> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      widget.isHindi
-                                          ? 'डॉ. संजय वर्मा (वरिष्ठ कृषि वैज्ञानिक)'
-                                          : 'Dr. Sanjay Verma (Agri Expert Specialist)',
+                                      widget.question['expert_name'] != null && widget.question['expert_name'].toString().trim().isNotEmpty
+                                          ? "${widget.question['expert_name']} ( Bharat Flow Agri Expert Specialist )"
+                                          : widget.isHindi
+                                              ? "डॉ. संजय वर्मा ( Bharat Flow Agri Expert Specialist )"
+                                              : "Dr. Sanjay Verma ( Bharat Flow Agri Expert Specialist )",
                                       style: const TextStyle(
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.bold,
