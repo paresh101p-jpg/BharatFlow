@@ -50,9 +50,10 @@ final communityForumProvider = StreamProvider<List<Map<String, dynamic>>>((ref) 
         .from('helpline_questions')
         .stream(primaryKey: ['id'])
         .eq('status', 'Replied')
-        .eq('is_public', true)
         .order('created_at', ascending: false)
-        .map((response) => List<Map<String, dynamic>>.from(response));
+        .map((response) => List<Map<String, dynamic>>.from(response)
+            .where((item) => item['is_public'] == true)
+            .toList());
   } catch (e) {
     print('Error loading community forum questions stream: $e');
     return Stream.value([]);
