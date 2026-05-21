@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:bharat_flow/core/utils/language_helper.dart';
 import 'package:bharat_flow/core/providers/location_provider.dart';
 
-
 enum UserRole { farmer, trader, customer }
 
 class AppSettings {
@@ -58,14 +57,15 @@ class AppSettings {
 class SettingsNotifier extends StateNotifier<AppSettings> {
   final _box = Hive.box('settings');
 
-  SettingsNotifier() : super(AppSettings(
-    role: UserRole.farmer,
-    language: 'English',
-    priceAlerts: true,
-    mandiUpdates: true,
-    autoLanguage: false,
-    weatherNotifications: true,
-  )) {
+  SettingsNotifier()
+      : super(AppSettings(
+          role: UserRole.farmer,
+          language: 'English',
+          priceAlerts: true,
+          mandiUpdates: true,
+          autoLanguage: false,
+          weatherNotifications: true,
+        )) {
     _loadSettings();
   }
 
@@ -77,9 +77,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final pinEnabled = _box.get('pin_enabled', defaultValue: false);
     final pinCode = _box.get('pin_code', defaultValue: '');
     final autoLanguage = _box.get('auto_language_enabled', defaultValue: false);
-    final weatherNotifications = _box.get('weather_notifications_enabled', defaultValue: true);
+    final weatherNotifications =
+        _box.get('weather_notifications_enabled', defaultValue: true);
     final lastSyncStr = _box.get('mandi_last_sync');
-    final lastSync = lastSyncStr != null ? DateTime.tryParse(lastSyncStr.toString()) : null;
+    final lastSync =
+        lastSyncStr != null ? DateTime.tryParse(lastSyncStr.toString()) : null;
 
     state = AppSettings(
       role: UserRole.values[roleIndex],
@@ -140,32 +142,47 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   }
 }
 
-
-final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
+final settingsProvider =
+    StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
   return SettingsNotifier();
 });
 
 // Translation Map for core UI
 final translationsProvider = Provider<Map<String, String>>((ref) {
-
   final settings = ref.watch(settingsProvider);
   String lang = settings.language;
 
   if (settings.autoLanguage) {
     final location = ref.watch(locationProvider);
-    final autoLangCode = LanguageHelper.getLanguageForLocation(location.state, location.city);
-    
+    final autoLangCode =
+        LanguageHelper.getLanguageForLocation(location.state, location.city);
+
     final codeToName = {
-      'hi': 'Hindi', 'gu': 'Gujarati', 'pa': 'Punjabi', 'mr': 'Marathi',
-      'bn': 'Bengali', 'te': 'Telugu', 'ta': 'Tamil', 'kn': 'Kannada', 'ml': 'Malayalam'
+      'hi': 'Hindi',
+      'gu': 'Gujarati',
+      'pa': 'Punjabi',
+      'mr': 'Marathi',
+      'bn': 'Bengali',
+      'te': 'Telugu',
+      'ta': 'Tamil',
+      'kn': 'Kannada',
+      'ml': 'Malayalam'
     };
     lang = codeToName[autoLangCode] ?? 'English';
   }
-  
-  final Map<String, Map<String, String>> data = {
 
+  final Map<String, Map<String, String>> data = {
     'Hindi': {
       'welcome': 'स्वागत है,',
+      'kisan_helpline': 'किसान हेल्पलाइन',
+      'ask_expert': 'विशेषज्ञ से पूछें',
+      'my_questions': 'मेरे सवाल',
+      'community_forum': 'कम्युनिटी',
+      'crop_disease': 'फसल रोग',
+      'mandi_bhav': 'मंडी भाव',
+      'mausam': 'मौसम',
+      'govt_schemes': 'सरकारी योजनाएं',
+      'other': 'अन्य',
       'farmer': 'किसान',
       'trader': 'व्यापारी',
       'mandi': 'मंडी',
@@ -272,7 +289,8 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'local_forecast_caps': 'स्थानीय पूर्वानुमान',
       'no_notifications': 'कोई नई सूचना नहीं है',
       'crop_vulnerability_caps': 'फसल संवेदनशीलता (आपके पसंदीदा)',
-      'no_fav_products_advice': 'अभी तक कोई पसंदीदा फसल नहीं जोड़ी गई है।\nमंडी इंटेलिजेंस में जाकर कुछ जोड़ें!',
+      'no_fav_products_advice':
+          'अभी तक कोई पसंदीदा फसल नहीं जोड़ी गई है।\nमंडी इंटेलिजेंस में जाकर कुछ जोड़ें!',
       'rainfall_probability_caps': 'बारिश की संभावना',
       'expert_advisory_caps': 'विशेषज्ञ सलाह',
       'loading_advice': 'सलाह लोड हो रही है...',
@@ -320,7 +338,8 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'favorite_commodities': 'पसंदीदा फसलें',
       'active_price_alerts': 'सक्रिय मूल्य अलर्ट',
       'insight_for_you': 'आपके लिए जानकारी',
-      'volatile_insight_desc': 'सभी मंडियों में सर्वोत्तम मूल्य पर खरीदने के लिए अलर्ट सेट करें।',
+      'volatile_insight_desc':
+          'सभी मंडियों में सर्वोत्तम मूल्य पर खरीदने के लिए अलर्ट सेट करें।',
       'top_price': 'उच्चतम भाव',
       'low_price': 'न्यूनतम भाव',
       'get_directions': 'रास्ता देखें',
@@ -401,6 +420,28 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'step4': 'सबको मिलाकर 500 ग्राम मिट्टी लैब भेजें।',
       'buyer_tab': 'खरीददार (Buyer)',
       'seller_tab': 'विक्रेता (Seller)',
+      'munafa_advisor': 'मुनाफा एडवाइजर',
+      'warehouse': 'गोदाम (भंडारण)',
+      'medicine': 'दवाइयाँ',
+      'fuel_price': 'ईंधन भाव',
+      'var': 'किस्म',
+      'grd': 'ग्रेड',
+      'updated': 'अपडेट किया गया',
+      'kg': 'किग्रा',
+      '20_kg': '20 किग्रा',
+      '40_kg': '40 किग्रा',
+      'premium_unlock_title': 'प्रीमियम सुविधा अनलॉक करें',
+      'unlock': 'अनलॉक करें',
+      'cancel': 'रद्द करें',
+      'watch_video': 'वीडियो देखें',
+      'support_needed': '🌾 आपके सहयोग की आवश्यकता है!',
+      'support_desc': 'भारतफ्लो को हमेशा के लिए मुफ्त रखने के लिए, कृपया शेयर करने से पहले २४ घंटे में सिर्फ एक बार यह छोटा वीडियो देखें। हमें उम्मीद है कि आप हमारा समर्थन करेंगे। धन्यवाद!',
+      'watch_and_share': '🎬 वीडियो देखें और शेयर करें',
+      'cancel_maybe_later': '❌ रद्द करें / बाद में देखें',
+      'ad_not_available': 'वीडियो विज्ञापन उपलब्ध नहीं है। सीधी पहुंच प्रदान की गई!',
+      'ad_display_failed': 'वीडियो प्रदर्शित नहीं किया जा सका. कृपया पुनः प्रयास करें!',
+      'premium_unlock_desc':
+          'प्रीमियम फीचर को २४ घंटे के लिए मुफ्त अनलॉक करने के लिए एक छोटा वीडियो देखें। विज्ञापन किसानों के लिए ऐप को मुफ्त रखने में मदद करते हैं। धन्यवाद!',
     },
     'Gujarati': {
       'welcome': 'સ્વાગત છે,',
@@ -510,7 +551,8 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'local_forecast_caps': 'સ્થાનિક આગાહી',
       'no_notifications': 'કોઈ નવી સૂચના નથી',
       'crop_vulnerability_caps': 'પાકની સંવેદનશીલતા (તમારી પસંદગી)',
-      'no_fav_products_advice': 'હજુ સુધી કોઈ પસંદગીના પાક ઉમેર્યા નથી.\nઉમેરવા માટે મંડી ઇન્ટેલિજન્સ પર જાઓ!',
+      'no_fav_products_advice':
+          'હજુ સુધી કોઈ પસંદગીના પાક ઉમેર્યા નથી.\nઉમેરવા માટે મંડી ઇન્ટેલિજન્સ પર જાઓ!',
       'rainfall_probability_caps': 'વરસાદની શક્યતા',
       'expert_advisory_caps': 'નિષ્ણાત સલાહ',
       'loading_advice': 'સલાહ લોડ થઈ રહી છે...',
@@ -558,7 +600,8 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'favorite_commodities': 'પસંદગીના પાક',
       'active_price_alerts': 'સક્રિય ભાવ એલર્ટ',
       'insight_for_you': 'તમારા માટે ખાસ',
-      'volatile_insight_desc': 'બધી મંડીઓમાં શ્રેષ્ઠ ભાવે ખરીદવા માટે એલર્ટ સેટ કરો.',
+      'volatile_insight_desc':
+          'બધી મંડીઓમાં શ્રેષ્ઠ ભાવે ખરીદવા માટે એલર્ટ સેટ કરો.',
       'top_price': 'સૌથી વધુ ભાવ',
       'low_price': 'સૌથી ઓછો ભાવ',
       'get_directions': 'રસ્તો બતાવો',
@@ -644,17 +687,125 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'step3': 'ઘાસ અને કચરો સાફ કરો.',
       'step4': 'બધું ભેગું કરીને 500 ગ્રામ માટી લેબમાં મોકલો.',
       'buyer_tab': 'ખરીદદાર (Buyer)',
-      'seller_tab': 'વિક्रेતા (Seller)',
+      'munafa_advisor': 'મુનાફા એડવાઇઝર',
+      'warehouse': 'ગોદામ (સંગ્રહ)',
+      'medicine': 'દવાઓ',
+      'fuel_price': 'બળતણ ભાવ',
+      'var': 'જાત',
+      'grd': 'ગ્રેડ',
+      'updated': 'અપડેટ કરેલ',
+      'kg': 'કિગ્રા',
+      '20_kg': '20 કિગ્રા',
+      '40_kg': '40 કિગ્રા',
+      'seller_tab': 'વિક્રેતા (Seller)',
+      'premium_unlock_title': 'પ્રીમિયમ ફીચર અનલોક કરો',
+      'unlock': 'અનલૉક કરો',
+      'cancel': 'રદ કરો',
+      'watch_video': 'વિડિયો જુઓ',
+      'support_needed': '🌾 તમારા સહકારની જરૂર છે!',
+      'support_desc': 'ભારતફ્લોને કાયમ માટે મફત રાખવા માટે, કૃપા કરીને શેર કરતા પહેલા ૨૪ કલાકમાં માત્ર એક વાર આ નાનો વિડીયો જુઓ. અમને આશા છે કે તમે અમને સહકાર આપશો. આભાર!',
+      'watch_and_share': '🎬 વિડિયો જુઓ અને શેર કરો',
+      'cancel_maybe_later': '❌ રદ કરો / પછી જોઈશું',
+      'ad_not_available': 'વિડિયો જાહેરાત ઉપલબ્ધ નથી. સીધી ઍક્સેસ મંજૂર કરવામાં આવી છે!',
+      'ad_display_failed': 'વિડિયો પ્રદર્શિત કરી શકાયો નથી. કૃપા કરીને ફરી પ્રયાસ કરો!',
+      'premium_unlock_desc':
+          'પ્રીમિયમ ફીચરને ૨૪ કલાક મફત અનલોક કરવા માટે એક નાનો વિડીયો જુઓ. જાહેરાતો ખેડૂતો માટે એપ મફત રાખવામાં મદદ કરે છે. આભાર!',
     },
-    'Punjabi': {'welcome': 'ਜੀ ਆਇਆਂ ਨੂੰ,', 'farmer': 'ਕਿਸਾਨ', 'trader': 'ਵਪਾਰੀ', 'mandi': 'ਮੰਡੀ ਭਾਅ', 'news': 'ਖ਼ਬਰਾਂ', 'khata': 'ਡਿਜੀਟਲ ਖਾਤਾ', 'mandi_intelligence': 'ਮੰਡੀ ਇੰਟੈਲੀਜੈਂਸ', 'mandis': 'ਮੰਡੀਆਂ', 'products': 'ਫਸਲਾਂ', 'search_products': 'ਫਸਲ ਖੋਜੋ...'},
-    'Marathi': {'welcome': 'स्वागत आहे,', 'farmer': 'शेतकरी', 'trader': 'व्यापारी', 'mandi': 'बाजार भाव', 'news': 'बातम्या', 'khata': 'डिजिटल खाते', 'mandi_intelligence': 'मंडी इंटेलिजन्स', 'mandis': 'मंडई', 'products': 'पिके', 'search_products': 'पिके शोधा...'},
-    'Bengali': {'welcome': 'স্বাগতম,', 'farmer': 'কৃষক', 'trader': 'ব্যবসায়ী', 'mandi': 'মাণ্ডি দর', 'news': 'খবর', 'khata': 'ডিজিটাল খাতা', 'mandi_intelligence': 'মাণ্ডি ইন্টেলিজেন্স', 'mandis': 'মাণ্ডি', 'products': 'পণ্য', 'search_products': 'পণ্য খুঁজুন...'},
-    'Telugu': {'welcome': 'స్వాగతం,', 'farmer': 'రైతు', 'trader': 'వ్యాపారి', 'mandi': 'మండి ధరలు', 'news': 'వార్తలు', 'khata': 'డిజిటల్ ఖాతా', 'mandi_intelligence': 'మండి ఇంటెలిజెన్స్', 'mandis': 'మండీలు', 'products': 'ఉత్పత్తులు', 'search_products': 'ఉత్పత్తుల శోధన...'},
-    'Tamil': {'welcome': 'வரவேற்கிறோம்,', 'farmer': 'விவசாயி', 'trader': 'வணிகர்', 'mandi': 'மண்டி விலைகள்', 'news': 'செய்திகள்', 'khata': 'டிஜிட்டல் கணக்கு', 'mandi_intelligence': 'மண்டி நுண்ணறிவு', 'mandis': 'மண்டிகள்', 'products': 'தயারিப்புகள்', 'search_products': 'தயারিப்புகளைத் தேடுங்கள்...'},
-    'Kannada': {'welcome': 'ಸ್ವಾಗತ,', 'farmer': 'ರೈತ', 'trader': 'ವ್ಯಾಪಾರಿ', 'mandi': 'ಮಂಡಿ ಬೆಲೆಗಳು', 'news': 'ಸುದ್ದಿಗಳು', 'khata': 'ಡಿಜಿಟಲ್ ಖಾತೆ', 'mandi_intelligence': 'ಮಂಡಿ ಇಂಟೆಲಿಜೆನ್ಸ್', 'mandis': 'ಮಂಡಿಗಳು', 'products': 'ಉತ್ಪನ್ನಗಳು', 'search_products': 'ಉತ್ಪನ್ನಗಳನ್ನು ಹುಡುಕಿ...'},
-    'Malayalam': {'welcome': 'സ്വാഗതം,', 'farmer': 'കർഷകൻ', 'trader': 'വ്യാപാരി', 'mandi': 'മണ്ടി വിലകൾ', 'news': 'വാർത്തകൾ', 'khata': 'ഡിജിറ്റൽ ഖാത', 'mandi_intelligence': 'മണ്ടി ഇന്റലിജൻസ്', 'mandis': 'മണ്ടികൾ', 'products': 'ഉൽപ്പന്നങ്ങൾ', 'search_products': 'ഉൽപ്പന്നങ്ങൾ തിരയുക...'},
+    'Punjabi': {
+      'welcome': 'ਜੀ ਆਇਆਂ ਨੂੰ,',
+      'farmer': 'ਕਿਸਾਨ',
+      'trader': 'ਵਪਾਰੀ',
+      'mandi': 'ਮੰਡੀ ਭਾਅ',
+      'news': 'ਖ਼ਬਰਾਂ',
+      'khata': 'ਡਿਜੀਟਲ ਖਾਤਾ',
+      'mandi_intelligence': 'ਮੰਡੀ ਇੰਟੈਲੀਜੈਂਸ',
+      'mandis': 'ਮੰਡੀਆਂ',
+      'products': 'ਫਸਲਾਂ',
+      'search_products': 'ਫਸਲ ਖੋਜੋ...'
+    },
+    'Marathi': {
+      'welcome': 'स्वागत आहे,',
+      'farmer': 'शेतकरी',
+      'trader': 'व्यापारी',
+      'mandi': 'बाजार भाव',
+      'news': 'बातम्या',
+      'khata': 'डिजिटल खाते',
+      'mandi_intelligence': 'मंडी इंटेलिजन्स',
+      'mandis': 'मंडई',
+      'products': 'पिके',
+      'search_products': 'पिके शोधा...'
+    },
+    'Bengali': {
+      'welcome': 'স্বাগতম,',
+      'farmer': 'কৃষক',
+      'trader': 'ব্যবসায়ী',
+      'mandi': 'মাণ্ডি দর',
+      'news': 'খবর',
+      'khata': 'ডিজিটাল খাতা',
+      'mandi_intelligence': 'মাণ্ডি ইন্টেলিজেন্স',
+      'mandis': 'মাণ্ডি',
+      'products': 'পণ্য',
+      'search_products': 'পণ্য খুঁজুন...'
+    },
+    'Telugu': {
+      'welcome': 'స్వాగతం,',
+      'farmer': 'రైతు',
+      'trader': 'వ్యాపారి',
+      'mandi': 'మండి ధరలు',
+      'news': 'వార్తలు',
+      'khata': 'డిజిటల్ ఖాతా',
+      'mandi_intelligence': 'మండి ఇంటెలిజెన్స్',
+      'mandis': 'మండీలు',
+      'products': 'ఉత్పత్తులు',
+      'search_products': 'ఉత్పత్తుల శోధన...'
+    },
+    'Tamil': {
+      'welcome': 'வரவேற்கிறோம்,',
+      'farmer': 'விவசாயி',
+      'trader': 'வணிகர்',
+      'mandi': 'மண்டி விலைகள்',
+      'news': 'செய்திகள்',
+      'khata': 'டிஜிட்டல் கணக்கு',
+      'mandi_intelligence': 'மண்டி நுண்ணறிவு',
+      'mandis': 'மண்டிகள்',
+      'products': 'தயারিப்புகள்',
+      'search_products': 'தயারিப்புகளைத் தேடுங்கள்...'
+    },
+    'Kannada': {
+      'welcome': 'ಸ್ವಾಗತ,',
+      'farmer': 'ರೈತ',
+      'trader': 'ವ್ಯಾಪಾರಿ',
+      'mandi': 'ಮಂಡಿ ಬೆಲೆಗಳು',
+      'news': 'ಸುದ್ದಿಗಳು',
+      'khata': 'ಡಿಜಿಟಲ್ ಖಾತೆ',
+      'mandi_intelligence': 'ಮಂಡಿ ಇಂಟೆಲಿಜೆನ್ಸ್',
+      'mandis': 'ಮಂಡಿಗಳು',
+      'products': 'ಉತ್ಪನ್ನಗಳು',
+      'search_products': 'ಉತ್ಪನ್ನಗಳನ್ನು ಹುಡುಕಿ...'
+    },
+    'Malayalam': {
+      'welcome': 'സ്വാഗതം,',
+      'farmer': 'കർഷകൻ',
+      'trader': 'വ്യാപാരി',
+      'mandi': 'മണ്ടി വിലകൾ',
+      'news': 'വാർത്തകൾ',
+      'khata': 'ഡിജിറ്റൽ ഖാത',
+      'mandi_intelligence': 'മണ്ടി ഇന്റലിജൻസ്',
+      'mandis': 'മണ്ടികൾ',
+      'products': 'ഉൽപ്പന്നങ്ങൾ',
+      'search_products': 'ഉൽപ്പന്നങ്ങൾ തിരയുക...'
+    },
     'English': {
       'welcome': 'WELCOME BACK,',
+      'kisan_helpline': 'Kisan Helpline',
+      'ask_expert': 'Ask Expert',
+      'my_questions': 'My Questions',
+      'community_forum': 'Community',
+      'crop_disease': 'Crop Disease',
+      'mandi_bhav': 'Mandi Bhav',
+      'mausam': 'Weather',
+      'govt_schemes': 'Govt Schemes',
+      'other': 'Other',
       'farmer': 'Farmer',
       'trader': 'Trader',
       'mandi': 'Mandi',
@@ -758,7 +909,8 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'favorite_commodities': 'Favorite Commodities',
       'active_price_alerts': 'Active Price Alerts',
       'insight_for_you': 'INSIGHT FOR YOU',
-      'volatile_insight_desc': 'Set alerts to buy at the best price across all mandis.',
+      'volatile_insight_desc':
+          'Set alerts to buy at the best price across all mandis.',
       'top_price': 'TOP PRICE',
       'low_price': 'LOW PRICE',
       'get_directions': 'GET DIRECTIONS',
@@ -845,10 +997,93 @@ final translationsProvider = Provider<Map<String, String>>((ref) {
       'step2': 'Dig a 6-inch deep "V" shaped hole.',
       'step3': 'Clean grass and debris.',
       'step4': 'Mix all and send 500g soil to lab.',
+      'munafa_advisor': 'Munafa Advisor',
+      'warehouse': 'Warehouse',
+      'medicine': 'Medicine',
+      'fuel_price': 'Fuel Price',
+      'var': 'Var',
+      'grd': 'Grd',
+      'updated': 'updated',
+      'kg': 'KG',
+      '20_kg': '20 KG',
+      '40_kg': '40 KG',
+      'premium_unlock_title': 'Premium Feature Unlock',
+      'unlock': 'Unlock',
+      'cancel': 'Cancel',
+      'watch_video': 'Watch Video',
+      'support_needed': '🌾 Your Support is Needed!',
+      'support_desc': 'To keep BharatFlow free forever, please watch this short video just once in 24 hours before sharing. We hope you will support us. Thank you!',
+      'watch_and_share': '🎬 Watch Video and Share',
+      'cancel_maybe_later': '❌ Cancel / Maybe Later',
+      'ad_not_available': 'Video ad not available. Direct access granted!',
+      'ad_display_failed': 'Video could not be displayed. Please try again!',
+      'premium_unlock_desc':
+          'Watch a short video to unlock this premium feature free for 24 hours. Ads keep BharatFlow 100% free for our farmers. Thank you for your support!',
     },
-
   };
-  
-  return data[lang] ?? data['English']!;
+
+  final location = ref.watch(locationProvider);
+  final englishMap = data['English']!;
+  final targetMap = Map<String, String>.from(data[lang] ?? {});
+
+  if (lang != 'English') {
+    String langCode = 'hi';
+    switch (lang) {
+      case 'Hindi':
+        langCode = 'hi';
+        break;
+      case 'Gujarati':
+        langCode = 'gu';
+        break;
+      case 'Punjabi':
+        langCode = 'pa';
+        break;
+      case 'Marathi':
+        langCode = 'mr';
+        break;
+      case 'Bengali':
+        langCode = 'bn';
+        break;
+      case 'Telugu':
+        langCode = 'te';
+        break;
+      case 'Tamil':
+        langCode = 'ta';
+        break;
+      case 'Kannada':
+        langCode = 'kn';
+        break;
+      case 'Malayalam':
+        langCode = 'ml';
+        break;
+      default:
+        langCode = 'hi';
+    }
+
+    final translationBox = Hive.box('translations_cache');
+
+    for (var entry in englishMap.entries) {
+      final key = entry.key;
+      final englishValue = entry.value;
+
+      if (!targetMap.containsKey(key)) {
+        final cacheKey = '${langCode}_$englishValue';
+        if (translationBox.containsKey(cacheKey)) {
+          targetMap[key] = translationBox.get(cacheKey) ?? englishValue;
+        } else {
+          targetMap[key] = englishValue;
+          LanguageHelper.translate(englishValue, location.state, location.city)
+              .then((translated) {
+            if (translated != englishValue) {
+              Future.microtask(() => ref.invalidateSelf());
+            }
+          });
+        }
+      }
+    }
+  }
+
+  return targetMap.isEmpty ? englishMap : targetMap;
 });
-final mandiTimingsProvider = StateProvider<String>((ref) => '04:00 AM - 08:00 PM');
+final mandiTimingsProvider =
+    StateProvider<String>((ref) => '04:00 AM - 08:00 PM');

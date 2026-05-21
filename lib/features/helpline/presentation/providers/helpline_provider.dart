@@ -42,20 +42,20 @@ void _pruneOlderQuestions(SupabaseClient supabase) async {
   }
 }
 
-// 2. Fetch public answered questions for the Community Forum
-final communityForumProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+// 2. Fetch public answered questions in real-time for the Community Forum
+final communityForumProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final supabase = Supabase.instance.client;
   try {
-    final response = await supabase
+    return supabase
         .from('helpline_questions')
-        .select()
+        .stream(primaryKey: ['id'])
         .eq('status', 'Replied')
         .eq('is_public', true)
-        .order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(response);
+        .order('created_at', ascending: false)
+        .map((response) => List<Map<String, dynamic>>.from(response));
   } catch (e) {
-    print('Error loading community forum questions: $e');
-    return [];
+    print('Error loading community forum questions stream: $e');
+    return Stream.value([]);
   }
 });
 
