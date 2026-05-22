@@ -141,7 +141,6 @@
             margin-top: 20px;
         }
 
-        /* Desktop Grid Layout */
         @media (min-width: 768px) {
             #main-content {
                 display: grid;
@@ -192,27 +191,15 @@
             background: linear-gradient(135deg, #10b981, #059669);
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
         }
-        .btn-submit:hover {
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-        }
-
         .btn-reject {
             background: linear-gradient(135deg, #ef4444, #dc2626);
             box-shadow: 0 6px 20px rgba(239, 68, 68, 0.25);
         }
-        .btn-reject:hover {
-            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
-        }
-
         .btn-approve {
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
         }
-        .btn-approve:hover {
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.35);
-        }
 
-        /* Modal Styles */
         .modal-backdrop {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -238,28 +225,10 @@
             text-align: center;
             margin-bottom: 20px;
         }
-        .modal-icon {
-            font-size: 36px;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .modal-card h3 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 800;
-            color: #ef4444;
-        }
-        .modal-subtitle {
-            margin: 4px 0 0 0;
-            font-size: 13px;
-            color: #87a996;
-        }
-        .quick-reasons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
+        .modal-icon { font-size: 36px; display: block; margin-bottom: 8px; }
+        .modal-card h3 { margin: 0; font-size: 20px; font-weight: 800; color: #ef4444; }
+        .modal-subtitle { margin: 4px 0 0 0; font-size: 13px; color: #87a996; }
+        .quick-reasons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
         .reason-chip {
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -271,13 +240,8 @@
             font-family: inherit;
             transition: all 0.2s;
         }
-        .reason-chip:hover {
+        .reason-chip:hover, .reason-chip.selected {
             background: rgba(239, 68, 68, 0.1);
-            border-color: #ef4444;
-            color: #fff;
-        }
-        .reason-chip.selected {
-            background: #ef4444;
             border-color: #ef4444;
             color: #fff;
         }
@@ -295,24 +259,15 @@
             font-size: 14px;
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.2s;
-            text-align: center;
         }
         .modal-btn-cancel {
             background: rgba(255, 255, 255, 0.05);
             border: 1.5px solid rgba(255, 255, 255, 0.12);
             color: #cbd5e1;
         }
-        .modal-btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
         .modal-btn-confirm {
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: #fff;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-        }
-        .modal-btn-confirm:hover {
-            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
         }
 
         .spinner {
@@ -334,11 +289,7 @@
             from { transform: scale(0.7); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
-
-        .footer-note {
-            font-size: 12px; color: #4a5d51; text-align: center; margin-top: 25px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 15px;
-        }
+        .footer-note { font-size: 12px; color: #4a5d51; text-align: center; margin-top: 25px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 15px; }
     </style>
 </head>
 <body>
@@ -360,33 +311,17 @@
                     <div class="section-title">Farmer Details (किसान का विवरण)</div>
                     <div class="farmer-info">
                         <div class="info-grid">
-                            <div>
-                                <div class="info-label">Farmer Name (किसान का नाम)</div>
-                                <div class="info-value" id="farmer-name">-</div>
-                            </div>
-                            <div>
-                                <div class="info-label">Category (श्रेणी)</div>
-                                <div class="info-value" id="question-category">-</div>
-                            </div>
-                            <div>
-                                <div class="info-label">Location (स्थान)</div>
-                                <div class="info-value" id="farmer-location">-</div>
-                            </div>
-                            <div>
-                                <div class="info-label">Date (दिनांक)</div>
-                                <div class="info-value" id="question-date">-</div>
-                            </div>
+                            <div><div class="info-label">Farmer Name</div><div class="info-value" id="farmer-name">-</div></div>
+                            <div><div class="info-label">Category</div><div class="info-value" id="question-category">-</div></div>
+                            <div><div class="info-label">Location</div><div class="info-value" id="farmer-location">-</div></div>
+                            <div><div class="info-label">Date</div><div class="info-value" id="question-date">-</div></div>
                         </div>
                     </div>
-
                     <div class="section-title">Farmer Question (किसान का सवाल)</div>
                     <div class="question-box" id="question-text">-</div>
-
                     <div id="crop-photo-section" style="display: none;">
-                        <div class="section-title">Crop Photo Attachment (फसल का फोटो)</div>
-                        <div class="crop-img-container">
-                            <img class="crop-img" id="crop-image" src="" alt="Crop attachment">
-                        </div>
+                        <div class="section-title">Crop Photo Attachment</div>
+                        <div class="crop-img-container"><img class="crop-img" id="crop-image" src="" alt="Crop attachment"></div>
                     </div>
                 </div>
 
@@ -402,22 +337,13 @@
                     </div>
 
                     <div class="actions-container">
-                        <button class="btn btn-submit btn-full-desktop" id="submit-btn" onclick="submitAnswer()">
-                            Send Answer (किसान को उत्तर भेजें)
-                        </button>
-                        <button class="btn btn-approve" id="approve-btn" onclick="approveQuestion()">
-                            Approve Question (चौपाल में भेजें)
-                        </button>
-                        <button class="btn btn-reject" id="reject-btn" onclick="openRejectModal()">
-                            Reject Question (अस्वीकार करें)
-                        </button>
+                        <button class="btn btn-submit btn-full-desktop" id="submit-btn" onclick="submitAnswer()">Send Answer (किसान को उत्तर भेजें)</button>
+                        <button class="btn btn-approve" id="approve-btn" onclick="approveQuestion()">Approve Question (चौपाल में भेजें)</button>
+                        <button class="btn btn-reject" id="reject-btn" onclick="openRejectModal()">Reject Question (अस्वीकार करें)</button>
                     </div>
                 </div>
             </div>
-
-            <div class="footer-note">
-                BharatFlow Secure Helpline Moderation Gateway
-            </div>
+            <div class="footer-note">BharatFlow Secure Helpline Moderation Gateway</div>
         </div>
     </div>
 
@@ -436,7 +362,6 @@
                     <button class="reason-chip" onclick="selectQuickReason('Irrelevant question. Please ask questions related to agriculture, crops, or mandi prices only. / अप्रासंगिक सवाल। कृपया केवल खेती-बाड़ी, फसल या मंडी भाव से जुड़े सवाल ही पूछें।', event)">🌾 Irrelevant Topic</button>
                     <button class="reason-chip" onclick="selectQuickReason('Incomplete details. Please specify crop name and details of the disease. / अधूरी जानकारी। कृपया फसल का नाम और बीमारी के लक्षण स्पष्ट रूप से बताएं।', event)">ℹ️ Incomplete Details</button>
                 </div>
-                
                 <label for="reject-reason-input" style="color: #ef4444; font-size: 11px; margin-top: 15px;">Custom Rejection Reason (अस्वीकृति का कारण):</label>
                 <textarea id="reject-reason-input" placeholder="अस्वीकृति का कारण विस्तार से लिखें..."></textarea>
             </div>
@@ -448,11 +373,9 @@
     </div>
 
     <script>
-        // ─── CONFIG ────────────────────────────────────────────────────────────
         const SUPABASE_URL   = 'https://wkhelvyqudzyzbrayyqo.supabase.co';
         const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndraGVsdnlxdWR6eXpicmF5eXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjgxOTQsImV4cCI6MjA5MzI0NDE5NH0.DyqHPzEpwo-ToLg8uH4ZYBZBrgl1V4KzZ5iE0QiYVyY';
         const EXPECTED_TOKEN = 're_XN3oz6b9_Ftg6263oNhDkzkCwZN3JyAvY';
-        // ──────────────────────────────────────────────────────────────────────
 
         let db = null;
         let questionData = null;
@@ -505,21 +428,15 @@
                     .select('*')
                     .eq('id', questionId);
 
-                if (error) {
-                    throw error;
-                }
-
+                if (error) throw error;
                 if (!rows || rows.length === 0) {
-                    return showFatalError('Question Not Found 🌾', 'This question has been deleted by the farmer or does not exist. <br>(यह सवाल किसान द्वारा हटा दिया गया है या मौजूद नहीं है।)');
+                    return showFatalError('Question Not Found 🌾', 'This question has been deleted by the farmer or does not exist.');
                 }
 
                 const data = rows[0];
                 questionData = data;
 
-                // Bind data to UI
                 document.getElementById('farmer-name').textContent = data.user_name;
-                
-                // Map category key to readable labels
                 const categoriesMap = {
                     'crop_disease': '🌾 Crop Disease / फसल रोग',
                     'mandi_bhav': '📈 Mandi Bhav / मंडी भाव',
@@ -528,7 +445,6 @@
                     'other': '⚙️ Other / अन्य'
                 };
                 document.getElementById('question-category').textContent = categoriesMap[data.category] || data.category;
-                
                 document.getElementById('farmer-location').textContent = `${data.user_city || 'Surat'}, ${data.user_state || 'Gujarat'}`;
                 
                 const createdDate = new Date(data.created_at);
@@ -538,20 +454,17 @@
                 
                 document.getElementById('question-text').textContent = data.question_text;
 
-                // Show Image if attached
                 if (data.image_url && data.image_url.trim().length > 0) {
                     document.getElementById('crop-image').src = data.image_url;
                     document.getElementById('crop-photo-section').style.display = 'block';
                 }
 
-                // Populate expert name if it exists in DB, otherwise default to Dr. Sanjay Verma
                 if (data.expert_name && data.expert_name.trim().length > 0) {
                     document.getElementById('expert-name-input').value = data.expert_name;
                 } else {
                     document.getElementById('expert-name-input').value = 'Dr. Sanjay Verma';
                 }
 
-                // If already replied or rejected or approved, populate the values
                 if (data.status === 'Replied') {
                     document.getElementById('answer-input').value = data.answer_text || '';
                     document.getElementById('submit-btn').textContent = 'Update Answer (उत्तर अपडेट करें)';
@@ -565,7 +478,7 @@
                     banner.style.marginBottom = '24px';
                     banner.style.color = '#fca5a5';
                     banner.style.fontSize = '13.5px';
-                    banner.style.lineHeight = '1.5';
+                    banner.innerHTML = `<strong>Reason (कारण):</strong> ${data.rejection_reason || data.answer_text}`;
                     const actionCol = document.getElementById('action-column') || mainContent;
                     actionCol.insertBefore(banner, actionCol.firstChild);
                     
@@ -580,7 +493,7 @@
                     banner.style.marginBottom = '24px';
                     banner.style.color = '#93c5fd';
                     banner.style.fontSize = '13.5px';
-                    banner.style.lineHeight = '1.5';
+                    banner.textContent = 'Question is approved for Community.';
                     const actionCol = document.getElementById('action-column') || mainContent;
                     actionCol.insertBefore(banner, actionCol.firstChild);
                     
@@ -588,10 +501,8 @@
                     document.getElementById('approve-btn').style.display = 'none';
                 }
 
-                // Hide loader and show main content
                 loader.style.display = 'none';
                 mainContent.style.display = 'block';
-
             } catch (err) {
                 showFatalError('Loading Failed ⚠️', `Unable to fetch details from server: ${err.message}`);
             }
@@ -620,7 +531,7 @@
                 const { error } = await db
                     .from('helpline_questions')
                     .update({
-                        status: 'Replied',
+                        status: 'Approved',
                         answer_text: answerText,
                         expert_name: expertName || 'Dr. Sanjay Verma',
                         replied_at: new Date().toISOString()
@@ -629,13 +540,12 @@
 
                 if (error) throw error;
 
-                // Show gloriously styled success message
                 portalCard.innerHTML = `
                     <div class="success-card">
                         <div class="success-icon">✓</div>
-                        <h2 class="success-title">Answer Sent Successfully!</h2>
+                        <h2 class="success-title">Answer Sent & Approved!</h2>
                         <p style="color: #87a996; font-size: 15px; margin-top: 10px; line-height: 1.5;">
-                            Ramu Bhai / Kisan has been notified inside the app! Your expert answer is now live on their ticket dashboard and anonymized on the Community Forum.
+                            Farmer has been notified. Your expert answer is now live on the Community Forum.
                         </p>
                         <div class="footer-note" style="margin-top: 40px;">
                             BharatFlow Helpline Moderation Portal
@@ -652,12 +562,9 @@
             }
         }
 
-        // Modal Controls
         function openRejectModal() {
             document.getElementById('reject-modal').style.display = 'flex';
             document.getElementById('reject-reason-input').value = '';
-            
-            // Clear selections
             const chips = document.querySelectorAll('.reason-chip');
             chips.forEach(chip => chip.classList.remove('selected'));
         }
@@ -667,15 +574,11 @@
         }
 
         function selectQuickReason(text, event) {
-            // Unselect others
             const chips = document.querySelectorAll('.reason-chip');
             chips.forEach(chip => chip.classList.remove('selected'));
-            
-            // Select current
             if (event && event.currentTarget) {
                 event.currentTarget.classList.add('selected');
             }
-            
             document.getElementById('reject-reason-input').value = text;
         }
 
@@ -705,7 +608,7 @@
                     .from('helpline_questions')
                     .update({
                         status: 'Rejected',
-                        answer_text: reasonText,
+                        rejection_reason: reasonText,
                         expert_name: expertName || 'Dr. Sanjay Verma',
                         replied_at: new Date().toISOString()
                     })
@@ -715,16 +618,12 @@
 
                 closeRejectModal();
 
-                // Show gloriously styled rejection success message
                 portalCard.innerHTML = `
                     <div class="success-card" style="padding: 20px 0;">
-                        <div class="error-icon" style="color: #ef4444; font-size: 64px; margin-bottom: 20px; animation: scaleUp 0.5s ease-out;">✗</div>
-                        <h2 class="error-title" style="color: #ef4444; font-weight: 800; font-size: 24px; margin: 0;">Question Rejected Successfully!</h2>
-                        <p style="color: #87a996; font-size: 15px; margin-top: 12px; line-height: 1.5; padding: 0 10px;">
-                            The ticket has been marked as Rejected. The farmer has been notified inside the app and can view the reason for rejection:
-                        </p>
+                        <div class="error-icon" style="color: #ef4444;">✗</div>
+                        <h2 class="error-title" style="color: #ef4444; font-weight: 800; font-size: 24px;">Question Rejected!</h2>
                         <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px; padding: 14px; margin: 18px 10px 0 10px; color: #fca5a5; font-size: 13.5px; text-align: left; line-height: 1.4;">
-                            <strong>Reason (कारण):</strong> ${reasonText}
+                            <strong>Reason:</strong> ${reasonText}
                         </div>
                         <div class="footer-note" style="margin-top: 40px;">
                             BharatFlow Helpline Moderation Portal
@@ -766,13 +665,12 @@
 
                 if (error) throw error;
 
-                // Show gloriously styled success message
                 portalCard.innerHTML = `
                     <div class="success-card">
                         <div class="success-icon" style="color: #3b82f6;">✓</div>
-                        <h2 class="success-title" style="color: #3b82f6;">Question Approved for Community!</h2>
+                        <h2 class="success-title" style="color: #3b82f6;">Question Approved!</h2>
                         <p style="color: #87a996; font-size: 15px; margin-top: 10px; line-height: 1.5;">
-                            This question has been successfully approved without an answer. It is now live in the Community Forum / चौपाल tab where other farmers can view and answer it!
+                            This question has been successfully approved without an answer. It is now live in the Community Forum.
                         </p>
                         <div class="footer-note" style="margin-top: 40px;">
                             BharatFlow Helpline Moderation Portal
@@ -804,7 +702,6 @@
             `;
         }
 
-        // Initialize Page
         init();
     </script>
 </body>
