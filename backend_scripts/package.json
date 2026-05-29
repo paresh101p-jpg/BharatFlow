@@ -1,0 +1,14 @@
+{
+  "name": "bharatflow-backend",
+  "version": "1.0.0",
+  "description": "Backend synchronization scripts for BharatFlow",
+  "main": "mandi_sync.js",
+  "scripts": {
+    "start": "node mandi_sync.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.4",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
+  }
+}

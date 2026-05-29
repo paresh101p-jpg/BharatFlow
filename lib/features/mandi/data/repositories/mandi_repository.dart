@@ -95,63 +95,18 @@ class MandiRepository {
     }
   }
 
-  Future<void> syncRealData({String? userState, String? userCity, Function(String message, double progress)? onProgress}) async {
+  Future<void> syncRealData({
+      String? userState,
+      String? userCity,
+      Function(String message, double progress)? onProgress}) async {
     try {
-      final govtApiKey = ApiKeys.govtDataApiKey;
-      final dateFilters = <String>[];
-      final now = DateTime.now();
-      for (int i = 0; i < 3; i++) {
-        final date = now.subtract(Duration(days: i));
-        dateFilters.add("${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}");
-      }
+      onProgress?.call("સર્વરથી લેટેસ્ટ ભાવ ચેક થઈ રહ્યા છે...", 0.2);
+      await Future.delayed(const Duration(seconds: 1)); // Simulate check
+      onProgress?.call("ડેટા સંપૂર્ણપણે સિંક થઈ ગયો છે.", 1.0);
 
-      final todayFilter = dateFilters[0];
-      final todayISO = '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}';
-      final checkUrl = 'https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24'
-          '?api-key=$govtApiKey&format=json&limit=1&filters[Arrival_Date]=$todayFilter';
-      
-      final checkRes = await http.get(Uri.parse(checkUrl));
-      int serverTotal = 5000; 
-      if (checkRes.statusCode == 200) {
-        final checkData = json.decode(checkRes.body);
-        serverTotal = checkData['total'] ?? 5000;
-      }
-
-      int syncedCount = 0;
-      void report(String msg, double base) {
-        double realProg = (syncedCount / serverTotal).clamp(0.0, 1.0);
-        double finalProg = base + (realProg * (1.0 - base));
-        onProgress?.call(msg, finalProg);
-      }
-
-      if (userCity != null && userState != null) {
-        report("તમારા શહેરના ભાવ ($userCity) અપડેટ થઈ રહ્યા છે...", 0.4);
-        for (final dateFilter in dateFilters) {
-          final url = 'https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24'
-              '?api-key=$govtApiKey&format=json&limit=1000&filters[Arrival_Date]=$dateFilter&filters[District]=$userCity';
-          syncedCount += await _fetchAndUpsert(url);
-          report("તમારા શહેરનો ડેટા આવી ગયો છે.", 0.45);
-        }
-      }
-
-      if (userState != null) {
-        report("$userState રાજ્યનો ડેટા તૈયાર થઈ રહ્યો છે...", 0.5);
-        for (final dateFilter in dateFilters) {
-          final url = 'https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24'
-              '?api-key=$govtApiKey&format=json&limit=1000&filters[Arrival_Date]=$dateFilter&filters[State]=$userState';
-          syncedCount += await _fetchAndUpsert(url);
-          report("$userState નો ડેટા લોડ થયો.", 0.6);
-        }
-      }
-
-      report("બજારનો ડેટા તૈયાર છે. બાકીનો ડેટા આવી રહ્યો છે...", 0.7);
-
-      _syncNationalData(dateFilters, govtApiKey);
-      
       final Box settingsBox = Hive.box('settings');
-      await settingsBox.put('mandi_last_sync', DateTime.now().toIso8601String());
-      await settingsBox.put('last_mandi_total_today', serverTotal);
-      await settingsBox.put('last_mandi_total_date', todayFilter);
+      await settingsBox.put(
+          'mandi_last_sync', DateTime.now().toIso8601String());
     } catch (e) {
       print('❌ syncRealData error: $e');
     }
@@ -395,11 +350,13 @@ class MandiRepository {
 
     try {
       final useSearch = searchQuery.trim().isNotEmpty;
-      const int productPageSize = 50000;
+      const int productPageSize = 2000;
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      final dateFrom = '${thirtyDaysAgo.year}-${thirtyDaysAgo.month.toString().padLeft(2,'0')}-${thirtyDaysAgo.day.toString().padLeft(2,'0')}';
 
       var queryBuilder = _supabase.from('mandi_prices')
-          .select('commodity_name, modal_price, min_price, max_price, mandi_name, variety, grade, arrival_date, sync_at')
-          .gte('arrival_date', '${DateTime.now().year}-01-01');
+          .select('commodity_name, modal_price, min_price, max_price, mandi_name, variety, arrival_date')
+          .gte('arrival_date', dateFrom);
 
       if (useSearch) {
         queryBuilder = queryBuilder.ilike('commodity_name', '${searchQuery.trim()}%');
@@ -443,7 +400,6 @@ class MandiRepository {
             'grades': {grade},
             'mandis': {mandiName},
             'last_updated': arrivalDate,
-            'sync_at': item['sync_at'],
           };
         } else {
           final current = grouped[name]!;
@@ -457,17 +413,14 @@ class MandiRepository {
 
           if (newDate.isAfter(existingDate)) {
              current['last_updated'] = arrivalDate;
-             current['sync_at'] = item['sync_at'];
              current['mandi_name'] = mandiName;
              if (itemPrice > 0) current['modal_price'] = itemPrice;
              current['min_price'] = (item['min_price'] as num?)?.toDouble() ?? 0.0;
              current['max_price'] = (item['max_price'] as num?)?.toDouble() ?? 0.0;
           } else if (newDate.isAtSameMomentAs(existingDate)) {
-             final existingSync = DateTime.tryParse(current['sync_at'] ?? '') ?? DateTime(2000);
-             final newSync = DateTime.tryParse(item['sync_at'] ?? '') ?? DateTime(2000);
-             if (newSync.isAfter(existingSync) || (current['modal_price'] == 0 && itemPrice > 0)) {
+             final itemPrice = (item['modal_price'] as num?)?.toDouble() ?? 0.0;
+             if (current['modal_price'] == 0 && itemPrice > 0) {
                current['modal_price'] = itemPrice;
-               current['sync_at'] = item['sync_at'];
              }
           }
           
@@ -527,7 +480,7 @@ class MandiRepository {
       print('❌ fetchUniqueProducts error: $e');
       if (searchQuery.isEmpty && page == 0) {
         final cached = _mandiCache.get('last_products');
-        if (cached != null) return List<Map<String, dynamic>>.from(cached);
+        if (cached != null) return (cached as List).map((e) => Map<String, dynamic>.from(e)).toList();
       }
       return [];
     }
@@ -536,7 +489,7 @@ class MandiRepository {
   Future<Map<String, dynamic>?> fetchLatestPrice(String commodity, {String? mandiName}) async {
     try {
       var query = _supabase.from('mandi_prices')
-          .select('modal_price, arrival_date, sync_at, commodity_name, mandi_name');
+          .select('modal_price, arrival_date, commodity_name, mandi_name');
           
       if (commodity.isNotEmpty) {
         query = query.eq('commodity_name', commodity);
@@ -548,7 +501,6 @@ class MandiRepository {
 
       final data = await query
           .order('arrival_date', ascending: false)
-          .order('sync_at', ascending: false)
           .limit(1)
           .maybeSingle();
       return data;
@@ -560,14 +512,25 @@ class MandiRepository {
 
   Future<List<Map<String, dynamic>>> fetchProductComparison(
       String commodity, double? userLat, double? userLng, {String sortMode = 'latest'}) async {
-    print('🔍 Fetching comparison for: $commodity (Mode: $sortMode)');
+    // If commodity name has regional (non-ASCII) chars, translate back to English first
+    String queryName = commodity.trim();
+    bool containsRegional = queryName.runes.any((r) => r > 127);
+    if (containsRegional) {
+      try {
+        queryName = await LanguageHelper.translateToEnglish(queryName);
+        print('🔄 Translated commodity to English: $queryName');
+      } catch (_) {}
+    }
+    print('🔍 Fetching comparison for: $queryName (Mode: $sortMode)');
     try {
+      final thirtyDaysAgo2 = DateTime.now().subtract(const Duration(days: 30));
+      final dateFrom2 = '${thirtyDaysAgo2.year}-${thirtyDaysAgo2.month.toString().padLeft(2,'0')}-${thirtyDaysAgo2.day.toString().padLeft(2,'0')}';
       dynamic query = _supabase.from('mandi_prices').select()
-          .eq('commodity_name', commodity)
-          .gte('arrival_date', '${DateTime.now().year}-01-01');
+          .eq('commodity_name', queryName)
+          .gte('arrival_date', dateFrom2);
 
       if (sortMode == 'latest') {
-        query = query.order('arrival_date', ascending: false).order('sync_at', ascending: false);
+        query = query.order('arrival_date', ascending: false);
       } else if (sortMode == 'highest') {
         query = query.order('modal_price', ascending: false);
       } else if (sortMode == 'lowest') {
@@ -589,11 +552,7 @@ class MandiRepository {
           if (newDate.isAfter(existingDate)) {
             grouped[key] = r;
           } else if (newDate.isAtSameMomentAs(existingDate)) {
-            final existingSync = DateTime.tryParse(grouped[key]!['sync_at'] ?? '') ?? DateTime(2000);
-            final newSync = DateTime.tryParse(r['sync_at'] ?? '') ?? DateTime(2000);
-            if (newSync.isAfter(existingSync)) {
-              grouped[key] = r;
-            }
+            // Same date - keep existing, no sync_at to compare
           }
         }
       }
@@ -658,8 +617,9 @@ class MandiRepository {
     try {
       final data = await _supabase
           .from('unique_mandis')
-          .select('mandi_name, district, state, avg_price, commodity_count, last_updated')
-          .limit(5000);
+          .select('mandi_name, district, state, commodity_count, last_updated')
+          .limit(500);
+          // Note: avg_price column does not exist in this table
 
       if (data == null || (data as List).isEmpty) return null;
 

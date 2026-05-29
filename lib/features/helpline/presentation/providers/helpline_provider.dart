@@ -7,8 +7,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-// 1. Fetch user's own questions in real-time, with automatic 365-day client-side pruning!
-final helplineQuestionsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+// Base Realtime stream for ALL accessible questions to prevent multiple channel conflicts
+final allHelplineQuestionsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final supabase = Supabase.instance.client;
   final user = supabase.auth.currentUser;
   if (user == null) return Stream.value([]);
@@ -20,13 +20,20 @@ final helplineQuestionsProvider = StreamProvider<List<Map<String, dynamic>>>((re
     return supabase
         .from('helpline_questions')
         .stream(primaryKey: ['id'])
-        .eq('user_id', user.id)
         .order('created_at', ascending: false)
         .map((response) => List<Map<String, dynamic>>.from(response));
   } catch (e) {
-    print('Error subscribing to personal helpline questions stream: $e');
+    print('Error subscribing to base helpline questions stream: $e');
     return Stream.value([]);
   }
+});
+
+// 1. Fetch user's own questions
+final helplineQuestionsProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  final supabase = Supabase.instance.client;
+  final user = supabase.auth.currentUser;
+  final allQuestions = ref.watch(allHelplineQuestionsProvider);
+  return allQuestions.whenData((list) => list.where((item) => item['user_id'] == user?.id).toList());
 });
 
 void _pruneOlderQuestions(SupabaseClient supabase) async {
@@ -43,19 +50,25 @@ void _pruneOlderQuestions(SupabaseClient supabase) async {
 }
 
 // 2. Fetch public answered questions in real-time for the Community Forum
-final communityForumProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+final communityForumProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  final allQuestions = ref.watch(allHelplineQuestionsProvider);
+  return allQuestions.whenData((list) => list
+      .where((item) => item['is_public'] == true && (item['status'] == 'Replied' || item['status'] == 'Approved'))
+      .toList());
+});
+
+// 2b. Fetch community answers for a specific question
+final helplineAnswersProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, questionId) {
   final supabase = Supabase.instance.client;
   try {
     return supabase
-        .from('helpline_questions')
+        .from('helpline_answers')
         .stream(primaryKey: ['id'])
-        .eq('status', 'Replied')
-        .order('created_at', ascending: false)
-        .map((response) => List<Map<String, dynamic>>.from(response)
-            .where((item) => item['is_public'] == true)
-            .toList());
+        .eq('question_id', questionId)
+        .order('created_at', ascending: true)
+        .map((response) => List<Map<String, dynamic>>.from(response));
   } catch (e) {
-    print('Error loading community forum questions stream: $e');
+    print('Error loading answers stream: $e');
     return Stream.value([]);
   }
 });
@@ -64,6 +77,28 @@ final communityForumProvider = StreamProvider<List<Map<String, dynamic>>>((ref) 
 class HelplineNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
   HelplineNotifier(this.ref) : super(const AsyncValue.data(null));
+
+  Future<bool> canSubmitQuestion() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) return false;
+
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day).toIso8601String();
+      
+      final countResponse = await supabase
+          .from('helpline_questions')
+          .select('id')
+          .eq('user_id', user.id)
+          .gte('created_at', startOfDay);
+          
+      return (countResponse as List).length < 3;
+    } catch (e) {
+      print('[HELPLINE] Error checking daily limit: $e');
+      return true; // Allow if check fails to prevent blocking user completely
+    }
+  }
 
   Future<bool> submitQuestion({
     required String category,
@@ -270,6 +305,32 @@ class HelplineNotifier extends StateNotifier<AsyncValue<void>> {
         throw Exception('User not logged in');
       }
 
+      // Fetch the question first to get the image_url
+      final questionData = await supabase
+          .from('helpline_questions')
+          .select('image_url')
+          .eq('id', questionId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (questionData != null && questionData['image_url'] != null) {
+        final String imageUrl = questionData['image_url'];
+        if (imageUrl.isNotEmpty) {
+          final uri = Uri.parse(imageUrl);
+          final pathSegments = uri.pathSegments;
+          final bucketIndex = pathSegments.indexOf('helpline_photos');
+          if (bucketIndex != -1 && bucketIndex + 1 < pathSegments.length) {
+             final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+             try {
+                await supabase.storage.from('helpline_photos').remove([filePath]);
+                print('[HELPLINE] Deleted image from storage: $filePath');
+             } catch (e) {
+                print('[HELPLINE] Warning: failed to delete image from storage: $e');
+             }
+          }
+        }
+      }
+
       await supabase
           .from('helpline_questions')
           .delete()
@@ -283,6 +344,71 @@ class HelplineNotifier extends StateNotifier<AsyncValue<void>> {
       return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  /// Adds a reply to a public question in the community forum
+  Future<bool> addAnswer({
+    required String questionId,
+    required String answerText,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      final profileAsync = ref.read(profileProvider);
+      final profile = profileAsync.value;
+
+      final data = {
+        'question_id': questionId,
+        'user_id': user.id,
+        'user_name': profile?.fullName ?? user.email?.split('@').first ?? 'Kisan',
+        'user_avatar': profile?.avatarUrl,
+        'answer_text': answerText,
+      };
+
+      await supabase.from('helpline_answers').insert(data);
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
+  Future<bool> submitAnswer({
+    required String questionId,
+    required String answerText,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      final profileAsync = ref.read(profileProvider);
+      final profile = profileAsync.value;
+
+      final data = {
+        'question_id': questionId,
+        'user_id': user.id,
+        'user_name': profile?.fullName ?? user.email?.split('@').first ?? 'Kisan',
+        'answer_text': answerText,
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      await supabase.from('helpline_answers').insert(data);
+      
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e) {
+      print('[HELPLINE] Error submitting answer: $e');
+      state = AsyncValue.error(e, StackTrace.current);
       return false;
     }
   }

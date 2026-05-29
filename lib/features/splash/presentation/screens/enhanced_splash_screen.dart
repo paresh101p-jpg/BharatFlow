@@ -14,16 +14,18 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:bharat_flow/core/providers/auth_providers.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:bharat_flow/core/utils/language_helper.dart';
+import 'package:bharat_flow/core/services/sync_service.dart';
 class EnhancedSplashScreen extends ConsumerStatefulWidget {
   const EnhancedSplashScreen({super.key});
 
   @override
-  ConsumerState<EnhancedSplashScreen> createState() => _EnhancedSplashScreenState();
+  ConsumerState<EnhancedSplashScreen> createState() =>
+      _EnhancedSplashScreenState();
 }
 
 class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
-  String _loadingStatus = ""; 
+  String _loadingStatus = "";
   int _percentage = 0;
 
   @override
@@ -31,28 +33,75 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final t = ref.read(translationsProvider);
-      setState(() => _loadingStatus = t['system_initializing'] ?? "System Initializing...");
+      setState(() => _loadingStatus =
+          t['system_initializing'] ?? "System Initializing...");
       _initializeApp(t);
     });
   }
 
   Future<void> _initializeApp(Map<String, String> t) async {
     final rand = math.Random();
-    
-    _updateProgress(rand.nextInt(4) + 1, t['connecting_to_bharat_network'] ?? "Connecting to Bharat Network..."); 
+
+    _updateProgress(rand.nextInt(4) + 1,
+        t['connecting_to_bharat_network'] ?? "Connecting to Bharat Network...");
     await Future.delayed(const Duration(milliseconds: 300));
-    
-    _updateProgress(rand.nextInt(8) + 6, t['finding_farm_location'] ?? "Finding farm location..."); 
+
+    _updateProgress(rand.nextInt(8) + 6,
+        t['finding_farm_location'] ?? "Finding farm location...");
     try {
       await ref.read(locationProvider.notifier).getCurrentLocation();
     } catch (_) {}
-    _updateProgress(rand.nextInt(10) + 15, t['location_found'] ?? "Location Found.");
+    _updateProgress(
+        rand.nextInt(10) + 15, t['location_found'] ?? "Location Found.");
+
+    // Sync cloud favorites and alerts
+    await SyncService.restoreFromCloud();
+
+    // Detect and set default language based on location if not already set by the user (first time install)
+    try {
+      final box = Hive.box('settings');
+      if (!box.containsKey('language') || box.get('language') == null) {
+        final loc = ref.read(locationProvider);
+        if (loc.address.contains('denied') ||
+            loc.address.contains('disabled') ||
+            loc.address.contains('Error')) {
+          await box.put('language', 'English');
+          await box.put('selected_language', 'English');
+          await ref.read(settingsProvider.notifier).setLanguage('English');
+        } else {
+          final stateName = loc.state.trim();
+          final langCode = LanguageHelper.indiaLanguageMap[stateName];
+          final codeToName = {
+            'hi': 'Hindi',
+            'gu': 'Gujarati',
+            'pa': 'Punjabi',
+            'mr': 'Marathi',
+            'bn': 'Bengali',
+            'te': 'Telugu',
+            'ta': 'Tamil',
+            'kn': 'Kannada',
+            'ml': 'Malayalam'
+          };
+          final detectedLang = codeToName[langCode] ?? 'English';
+
+          debugPrint(
+              'Splash: First-time location detected: "$stateName". Auto-setting language to "$detectedLang"');
+
+          await box.put('language', detectedLang);
+          await box.put('selected_language', detectedLang);
+          await ref.read(settingsProvider.notifier).setLanguage(detectedLang);
+        }
+        ref.invalidate(translationsProvider);
+      }
+    } catch (e) {
+      debugPrint('Splash: Error auto-setting language: $e');
+    }
 
     try {
       final box = Hive.box('settings');
       final lastSyncStr = box.get('mandi_last_sync');
       bool isFresh = false;
-      
+
       if (lastSyncStr != null) {
         final lastSync = DateTime.parse(lastSyncStr);
         final diff = DateTime.now().difference(lastSync);
@@ -60,7 +109,8 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
       }
 
       if (isFresh) {
-        _updateProgress(rand.nextInt(20) + 60, t['welcome_exclamation'] ?? "Welcome!");
+        _updateProgress(
+            rand.nextInt(20) + 60, t['welcome_exclamation'] ?? "Welcome!");
         await Future.wait([
           ref.read(mandiPricesProvider.notifier).loadInitial(),
           ref.read(productListProvider.notifier).loadInitial(),
@@ -69,21 +119,23 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
       } else {
         final loc = ref.read(locationProvider);
         await ref.read(mandiRepositoryProvider).syncRealData(
-          userState: loc.state,
-          userCity: loc.city,
-          onProgress: (msg, prog) {
-            // Add a little random jitter to the real progress
-            double scaled = 25 + (prog * 45) + rand.nextInt(5); 
-            _updateProgress(scaled.toInt().clamp(0, 95), msg);
-          },
-        );
-        
-        _updateProgress(rand.nextInt(10) + 75, t['mandi_loaded'] ?? "Mandis Loaded...");
+              userState: loc.state,
+              userCity: loc.city,
+              onProgress: (msg, prog) {
+                // Add a little random jitter to the real progress
+                double scaled = (25 + (prog * 45) + rand.nextInt(5)).toDouble();
+                _updateProgress(scaled.toInt().clamp(0, 95), msg);
+              },
+            );
+
+        _updateProgress(
+            rand.nextInt(10) + 75, t['mandi_loaded'] ?? "Mandis Loaded...");
         await ref.read(mandiPricesProvider.notifier).loadInitial();
-        
-        _updateProgress(rand.nextInt(5) + 90, t['preparing_crops'] ?? "Preparing Crops...");
+
+        _updateProgress(
+            rand.nextInt(5) + 90, t['preparing_crops'] ?? "Preparing Crops...");
         await ref.read(productListProvider.notifier).loadInitial();
-        
+
         _updateProgress(100, t['ready_exclamation'] ?? "Ready!");
       }
     } catch (_) {
@@ -112,7 +164,8 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
     if (mounted) {
       // ✅ Level 1: Attempt to restore session if Hive says we are logged in but Supabase is empty
       if (isLoggedIn && auth.currentSession == null) {
-        debugPrint('Splash: isLoggedIn=true but session=null. Attempting silent recovery...');
+        debugPrint(
+            'Splash: isLoggedIn=true but session=null. Attempting silent recovery...');
         try {
           // Use the global singleton to avoid conflicts
           final googleUser = await googleSignInInstance.signInSilently();
@@ -133,7 +186,7 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
       }
 
       final session = auth.currentSession;
-      
+
       Widget nextScreen;
       if (!seenOnboarding) {
         nextScreen = const OnboardingScreen();
@@ -153,7 +206,8 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
             transitionDuration: const Duration(milliseconds: 1000),
@@ -197,10 +251,18 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
                             shape: BoxShape.circle,
                             color: Colors.white.withOpacity(0.1),
                             boxShadow: [
-                              BoxShadow(color: Colors.greenAccent.withOpacity(0.3), blurRadius: 40, spreadRadius: 10)
+                              BoxShadow(
+                                  color: Colors.greenAccent.withOpacity(0.3),
+                                  blurRadius: 40,
+                                  spreadRadius: 10)
                             ],
                           ),
-                          child: Image.asset('assets/images/logo.png', width: 120, height: 120),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       );
                     },
@@ -213,13 +275,23 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
                       fontSize: 52,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 4,
-                      shadows: [Shadow(color: Colors.black45, offset: Offset(0, 4), blurRadius: 15)],
+                      shadows: [
+                        Shadow(
+                            color: Colors.black45,
+                            offset: Offset(0, 4),
+                            blurRadius: 15)
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    ref.watch(translationsProvider)['empowered_kisan_bharat'] ?? 'Empowered Kisan · Empowered Bharat',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    ref.watch(translationsProvider)['empowered_kisan_bharat'] ??
+                        'Empowered Kisan · Empowered Bharat',
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5),
                   ),
                 ],
               ),
@@ -227,7 +299,7 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
 
             // Bottom Progress
             Positioned(
-              bottom: 60,
+              bottom: 30, // Adjusted to fit branding beautifully
               left: 40,
               right: 40,
               child: Column(
@@ -237,13 +309,20 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _loadingStatus, 
-                          style: const TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold),
+                          _loadingStatus,
+                          style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text('$_percentage%', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                      Text('$_percentage%',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -257,14 +336,35 @@ class _EnhancedSplashScreenState extends ConsumerState<EnhancedSplashScreen> {
                       children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 400),
-                          width: (MediaQuery.of(context).size.width - 80) * (_percentage / 100),
+                          width: (MediaQuery.of(context).size.width - 80) *
+                              (_percentage / 100),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Colors.greenAccent, Colors.white]),
+                            gradient: const LinearGradient(
+                                colors: [Colors.greenAccent, Colors.white]),
                             borderRadius: BorderRadius.circular(10),
-                            boxShadow: [BoxShadow(color: Colors.greenAccent.withOpacity(0.5), blurRadius: 10)],
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.greenAccent.withOpacity(0.5),
+                                  blurRadius: 10)
+                            ],
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  const Text(
+                    'From',
+                    style: TextStyle(color: Colors.white60, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'MOJILO®',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
                     ),
                   ),
                 ],
@@ -282,12 +382,15 @@ class _IndependentAnimationLayer extends StatefulWidget {
   const _IndependentAnimationLayer();
 
   @override
-  State<_IndependentAnimationLayer> createState() => _IndependentAnimationLayerState();
+  State<_IndependentAnimationLayer> createState() =>
+      _IndependentAnimationLayerState();
 }
 
-class _IndependentAnimationLayerState extends State<_IndependentAnimationLayer> with SingleTickerProviderStateMixin {
+class _IndependentAnimationLayerState extends State<_IndependentAnimationLayer>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  final List<_FloatingProduct> _products = List.generate(20, (_) => _FloatingProduct());
+  final List<_FloatingProduct> _products =
+      List.generate(20, (_) => _FloatingProduct());
 
   @override
   void initState() {
@@ -327,10 +430,11 @@ class _ProductPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (var p in products) {
-      final double currentY = ((p.y - (animationValue * p.speed)) % 1.2 + 1.2) % 1.2 - 0.1;
+      final double currentY =
+          ((p.y - (animationValue * p.speed)) % 1.2 + 1.2) % 1.2 - 0.1;
       final double xPos = p.x * size.width;
       final double yPos = currentY * size.height;
-      
+
       canvas.save();
       canvas.translate(xPos, yPos);
       canvas.rotate(animationValue * 2 * math.pi * p.rotationSpeed);
@@ -352,15 +456,16 @@ class _FloatingProduct {
   final IconData icon;
   late final TextPainter painter;
 
-  _FloatingProduct() : icon = [
-    Icons.grain,
-    Icons.eco,
-    Icons.grass,
-    Icons.agriculture,
-    Icons.spa,
-    Icons.local_florist,
-    Icons.forest,
-  ][math.Random().nextInt(7)] {
+  _FloatingProduct()
+      : icon = [
+          Icons.grain,
+          Icons.eco,
+          Icons.grass,
+          Icons.agriculture,
+          Icons.spa,
+          Icons.local_florist,
+          Icons.forest,
+        ][math.Random().nextInt(7)] {
     painter = TextPainter(
       text: TextSpan(
         text: String.fromCharCode(icon.codePoint),

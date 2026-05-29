@@ -17,22 +17,24 @@ class AnimatedBottomNav extends ConsumerWidget {
       {'icon': Icons.store_rounded, 'label': t['store'] ?? 'Store', 'color': const Color(0xFF1565C0)},
     ];
 
-    return Container(
-      height: 70,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 70,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(items.length, (index) {
           final isSelected = currentIndex == index;
@@ -76,6 +78,6 @@ class AnimatedBottomNav extends ConsumerWidget {
           );
         }),
       ),
-    );
+    ));
   }
 }

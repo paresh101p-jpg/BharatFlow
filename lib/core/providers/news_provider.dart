@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:share_plus/share_plus.dart';
-import 'package:bharat_flow/core/constants/api_keys.dart';
+import 'package:bharat_flow/core/services/config_service.dart';
 import 'package:bharat_flow/core/utils/api_tracker.dart';
 
 class NewsItem {
@@ -94,105 +94,13 @@ class NewsNotifier extends StateNotifier<AsyncValue<List<NewsItem>>> {
   }
 
   Future<void> _syncNews() async {
-    if (_isSyncing) return;
-    _isSyncing = true;
-
-    try {
-      debugPrint('🔄 Attempting Sync: NewsData.io');
-      final response = await http.get(Uri.parse(
-        'https://newsdata.io/api/1/news'
-        '?apikey=${ApiKeys.newsDataApiKey}'
-        '&country=in&language=hi'
-        '&q=kisan+fasal+mandi+krishi&size=10',
-      ));
-      ApiTracker.logCall('NewsData.io: Get Agri News', statusCode: response.statusCode);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final articles = (data['results'] as List?) ?? [];
-        if (articles.isNotEmpty) {
-          debugPrint('✅ NewsData found ${articles.length} articles');
-          await _processArticles(articles);
-        }
-      }
-    } catch (e) {
-      debugPrint('NewsData Error: $e');
-    }
-
-    await _syncWithRSS();
-    _isSyncing = false;
+    // News syncing is now handled entirely by the VPS backend.
+    // The VPS pushes new articles directly to Supabase and sends FCM notifications.
     fetchNews(force: false);
   }
 
   Future<void> _syncWithRSS() async {
-    final sources = [
-      'https://news.google.com/rss/search?q=kisan+kheti+mandi+when:24h&hl=hi&gl=IN&ceid=IN:hi',
-      'https://hindi.krishijagran.com/rss/news/',
-      'https://www.jagran.com/rss/news/business_agriculture.xml',
-      'https://www.gaonconnection.com/feed',
-      'https://hindi.news18.com/rss/khabar/nation/agriculture.xml',
-    ];
-
-    for (final url in sources) {
-      try {
-        final response = await http
-            .get(Uri.parse(url))
-            .timeout(const Duration(seconds: 10));
-        ApiTracker.logCall('RSS Feed: $url', statusCode: response.statusCode);
-
-        if (response.statusCode != 200) continue;
-        final body = utf8.decode(response.bodyBytes, allowMalformed: true);
-        final items = body.split(RegExp(r'<item.*?>'));
-        final articles = <Map<String, dynamic>>[];
-
-        for (var i = 1; i < items.length && i <= 15; i++) {
-          final title = _extractTag(items[i], 'title');
-          final link = _extractTag(items[i], 'link');
-          final description = _extractTag(items[i], 'description');
-          
-          // Improved image extraction
-          String? imageUrl;
-          
-          // 1. Check media:content
-          final mediaMatch = RegExp(r'<media:content.*?url="(.*?)"', caseSensitive: false).firstMatch(items[i]);
-          if (mediaMatch != null) {
-            imageUrl = mediaMatch.group(1);
-          }
-          
-          // 2. Check enclosure
-          if (imageUrl == null) {
-            final enclosureMatch = RegExp(r'<enclosure.*?url="(.*?)"', caseSensitive: false).firstMatch(items[i]);
-            if (enclosureMatch != null) {
-              imageUrl = enclosureMatch.group(1);
-            }
-          }
-          
-          // 3. Check for <img> in description
-          if (imageUrl == null && description.isNotEmpty) {
-            final imgMatch = RegExp(r'<img.*?src="(.*?)"', caseSensitive: false).firstMatch(items[i]);
-            if (imgMatch != null) {
-              imageUrl = imgMatch.group(1);
-            }
-          }
-
-          if (title.isNotEmpty && link.isNotEmpty) {
-            articles.add({
-              'title': title,
-              'link': link,
-              'description': description.isNotEmpty ? description : title,
-              'image_url': imageUrl,
-            });
-          }
-        }
-
-        if (articles.isNotEmpty) {
-          debugPrint('✅ Found ${articles.length} articles from $url');
-          await _processArticles(articles);
-        }
-      } catch (e) {
-        debugPrint('RSS Error ($url): $e');
-      }
-    }
+    // Moved to VPS backend.
   }
 
   String _extractTag(String xml, String tag) {

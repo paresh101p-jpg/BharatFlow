@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:bharat_flow/core/constants/api_keys.dart';
+import 'package:bharat_flow/core/services/config_service.dart';
 import 'package:bharat_flow/features/profile/data/repositories/profile_repository.dart';
 import 'package:bharat_flow/core/theme/app_theme.dart';
 import 'package:bharat_flow/core/providers/settings_provider.dart';
@@ -48,7 +48,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     }
     
     try {
-      final apiKey = ApiKeys.googlePlacesKey;
+      final apiKey = ConfigService.get('google_places_key');
       final url = "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${Uri.encodeComponent(query)}&types=(cities)&components=country:in&key=$apiKey";
       
       final response = await http.get(Uri.parse(url));

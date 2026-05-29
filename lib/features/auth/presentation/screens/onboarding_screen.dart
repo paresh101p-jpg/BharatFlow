@@ -57,10 +57,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TextButton(
-                  onPressed: () => _controller.jumpToPage(_pages.length - 1),
-                  child: const Text('SKIP', style: TextStyle(color: Colors.grey)),
-                ),
+                _isLastPage
+                    ? const SizedBox(width: 64) // Hide SKIP on last page while keeping alignment centered
+                    : TextButton(
+                        onPressed: () {
+                          Hive.box('settings').put('seenOnboarding', true);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          );
+                        },
+                        child: const Text('SKIP', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                      ),
                 SmoothPageIndicator(
                   controller: _controller,
                   count: _pages.length,

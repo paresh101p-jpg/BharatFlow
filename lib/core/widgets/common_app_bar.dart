@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bharat_flow/core/providers/auth_providers.dart';
@@ -8,6 +11,10 @@ import 'package:bharat_flow/core/providers/general_providers.dart';
 import 'package:bharat_flow/features/dashboard/presentation/widgets/location_weather_widget.dart';
 import 'package:bharat_flow/features/notifications/presentation/screens/notification_history_screen.dart';
 import 'package:bharat_flow/features/profile/presentation/screens/profile_screen.dart';
+import 'package:bharat_flow/core/services/share_manager.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:bharat_flow/features/profile/data/repositories/profile_repository.dart';
 
 class CommonAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final bool showBack;
@@ -38,11 +45,17 @@ class CommonAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final t = ref.watch(translationsProvider);
     const primary = Color(0xFF1B5E20);
 
-    String? photoUrl = googleUserAsync.when(
-      data: (user) => user?.photoUrl,
-      loading: () => null,
-      error: (_, __) => null,
-    );
+    final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.value;
+    final googleUser = googleUserAsync.value;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final box = Hive.box('settings');
+
+    final String? photoUrl = profile?.avatarUrl ??
+        googleUser?.photoUrl ??
+        authUser?.userMetadata?['avatar_url'] ??
+        authUser?.userMetadata?['picture'] ??
+        box.get('userPhoto');
 
     return AppBar(
       backgroundColor: Colors.white,
@@ -60,54 +73,92 @@ class CommonAppBar extends ConsumerWidget implements PreferredSizeWidget {
           : null,
       title: title != null
           ? Text(title!, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A), fontSize: 18))
-          : locationAsync.when(
-              data: (loc) => LocationWeatherWidget(loc: loc),
-              loading: () => LocationWeatherWidget(loc: {'displayCity': t['fetching_location'] ?? 'Locating...', 'displayState': ''}),
-              error: (_, __) => const LocationWeatherWidget(loc: {'displayCity': 'Surat', 'displayState': 'Gujarat'}),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 36,
+                    width: 36,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  "BharatFlow",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1B5E20),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
       actions: showActions
           ? [
               GestureDetector(
-                onTap: () {
-                  ref.read(hasUnreadNotificationsProvider.notifier).state = false;
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationHistoryScreen()));
-                },
+                onTap: () => shareAppBranding(context),
                 child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  child: Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: primary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.notifications_none_rounded, color: primary, size: 22),
-                      ),
-                      if (hasUnread)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                          ),
-                        ),
-                    ],
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: const Icon(Icons.share, color: primary, size: 22),
                 ),
               ),
-              if (showProfile)
+              const SizedBox(width: 8),
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationHistoryScreen()),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        hasUnread ? Icons.notifications_active : Icons.notifications_none,
+                        color: primary,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  if (hasUnread)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (showProfile) ...[
+                const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  ),
                   child: Container(
-                    margin: const EdgeInsets.only(right: 16),
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: primary.withOpacity(0.4), width: 2),
+                      border: Border.all(color: primary.withOpacity(0.2), width: 1.5),
                     ),
                     child: ClipOval(
                       child: photoUrl != null
@@ -116,6 +167,8 @@ class CommonAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
+              ],
+              const SizedBox(width: 16),
             ]
           : null,
     );
@@ -153,11 +206,17 @@ class CommonSliverAppBar extends ConsumerWidget {
     final t = ref.watch(translationsProvider);
     const primary = Color(0xFF1B5E20);
 
-    String? photoUrl = googleUserAsync.when(
-      data: (user) => user?.photoUrl,
-      loading: () => null,
-      error: (_, __) => null,
-    );
+    final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.value;
+    final googleUser = googleUserAsync.value;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final box = Hive.box('settings');
+
+    final String? photoUrl = profile?.avatarUrl ??
+        googleUser?.photoUrl ??
+        authUser?.userMetadata?['avatar_url'] ??
+        authUser?.userMetadata?['picture'] ??
+        box.get('userPhoto');
 
     return SliverAppBar(
       pinned: true,
@@ -176,61 +235,102 @@ class CommonSliverAppBar extends ConsumerWidget {
           : null,
       title: title != null
           ? Text(title!, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A), fontSize: 18))
-          : locationAsync.when(
-              data: (loc) => LocationWeatherWidget(loc: loc),
-              loading: () => LocationWeatherWidget(loc: {'displayCity': t['fetching_location'] ?? 'Locating...', 'displayState': ''}),
-              error: (_, __) => const LocationWeatherWidget(loc: {'displayCity': 'Surat', 'displayState': 'Gujarat'}),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 36,
+                    width: 36,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  "BharatFlow",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1B5E20),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
       actions: showActions
           ? [
               GestureDetector(
-                onTap: () {
-                  ref.read(hasUnreadNotificationsProvider.notifier).state = false;
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationHistoryScreen()));
-                },
+                onTap: () => shareAppBranding(context),
                 child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  child: Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: primary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.notifications_none_rounded, color: primary, size: 22),
-                      ),
-                      if (hasUnread)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  width: 38,
-                  height: 38,
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: primary.withOpacity(0.4), width: 2),
+                    color: primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: ClipOval(
-                    child: photoUrl != null
-                        ? Image.network(photoUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _avatar(primary))
-                        : _avatar(primary),
-                  ),
+                  child: const Icon(Icons.share, color: primary, size: 22),
                 ),
               ),
+              const SizedBox(width: 8),
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationHistoryScreen()),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        hasUnread ? Icons.notifications_active : Icons.notifications_none,
+                        color: primary,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  if (hasUnread)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (showProfile) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  ),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: primary.withOpacity(0.2), width: 1.5),
+                    ),
+                    child: ClipOval(
+                      child: photoUrl != null
+                          ? Image.network(photoUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _avatar(primary))
+                          : _avatar(primary),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 16),
             ]
           : null,
     );
@@ -240,4 +340,29 @@ class CommonSliverAppBar extends ConsumerWidget {
         color: primary.withOpacity(0.1),
         child: Icon(Icons.person, color: primary, size: 22),
       );
+}
+
+Future<void> shareAppBranding(BuildContext context) async {
+  try {
+    final byteData = await rootBundle.load('assets/images/logo.png');
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/bharat_flow_logo.png');
+    await tempFile.writeAsBytes(byteData.buffer.asUint8List(
+      byteData.offsetInBytes, 
+      byteData.lengthInBytes,
+    ));
+
+    await ShareManager.shareXFiles(
+      context,
+      [XFile(tempFile.path)],
+      text: '🌾 *BharatFlow super app* 🌾\n\nLive Mandi Prices, Proximity Crop Calendars, Kisan Market Store, and Real-time Price Alerts! 📲\n\nDownload Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow',
+      subject: 'Download BharatFlow App',
+    );
+  } catch (e) {
+    await ShareManager.share(
+      context,
+      '🌾 *BharatFlow super app* 🌾\n\nLive Mandi Prices, Proximity Crop Calendars, Kisan Market Store, and Real-time Price Alerts! 📲\n\nDownload Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow',
+      subject: 'Download BharatFlow App',
+    );
+  }
 }

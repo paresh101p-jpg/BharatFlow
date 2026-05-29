@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'package:bharat_flow/features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -60,6 +61,59 @@ class _ProfitCalculatorScreenState extends ConsumerState<ProfitCalculatorScreen>
     _commRateController.dispose();
     _laborController.dispose();
     super.dispose();
+  }
+
+  void _shareCurrentAnalysis() async {
+    try {
+      final modeText = _isSellingMode ? 'SELL ANALYSIS' : 'BUY ANALYSIS';
+      final qty = quantityInQuintals;
+      final totalCost = qty * costPrice;
+      final f = freight;
+      final e = extraCost;
+      final labor = qty * laborPerQ;
+      final comm = _isSellingMode ? (qty * costPrice * (commRate / 100)) : 0.0;
+      final totalExp = f + e + labor + comm;
+      final requiredFunds = totalCost + totalExp;
+
+      final buffer = StringBuffer();
+      buffer.writeln('📈 *BharatFlow: Profit Advisor* 📈');
+      buffer.writeln('🔍 *Mode:* $modeText');
+      buffer.writeln();
+      buffer.writeln('📦 *Quantity:* $quantityRaw $_selectedUnit (${qty.toStringAsFixed(2)} Quintal)');
+      
+      if (_selectedMandi != null) {
+        buffer.writeln('🏢 *Selected Market:* ${_selectedMandi!['mandi_name']}');
+      }
+      if (_selectedProduct != null) {
+        buffer.writeln('🌾 *Product:* $_selectedProduct');
+      }
+
+      buffer.writeln('💵 *Price per Unit:* ₹${costPrice.toInt()}');
+      buffer.writeln('💰 *Total Base Cost:* ₹${totalCost.toInt()}');
+      buffer.writeln();
+      buffer.writeln('📋 *Expenses Breakdown:*');
+      buffer.writeln('• *Transport:* ₹${f.toInt()}');
+      buffer.writeln('• *Labor:* ₹${labor.toInt()}');
+      if (comm > 0) {
+        buffer.writeln('• *Commission:* ₹${comm.toInt()}');
+      }
+      if (extraCost > 0) {
+        buffer.writeln('• *Extra Cost:* ₹${e.toInt()}');
+      }
+      buffer.writeln('📉 *Total Expenses:* ₹${totalExp.toInt()}');
+      buffer.writeln();
+      buffer.writeln('🎯 *REQUIRED FUNDS:* ₹${requiredFunds.toInt()}');
+      
+      buffer.writeln('\n📲 Calculate and maximize your mandi profits with AI tools on *BharatFlow app*!');
+      buffer.writeln('Download Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow');
+
+      await Share.share(
+        buffer.toString(),
+        subject: 'Munafa Analysis: ${_selectedProduct ?? "Crop"}',
+      );
+    } catch (e) {
+      debugPrint('Error sharing analysis: $e');
+    }
   }
 
   Future<void> _pickMandi() async {
@@ -145,19 +199,19 @@ class _ProfitCalculatorScreenState extends ConsumerState<ProfitCalculatorScreen>
                   Text(t['analysis_saved'] ?? 'Analysis Saved!'),
                 ],
               ),
-              content: const Text('Your profit analysis has been saved to your local history successfully.'),
+              content: Text(t['restore_success'] ?? 'Your profit analysis has been saved to your local history successfully.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(t['ok'] ?? 'OK', style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           );
           
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Analysis saved to history!'),
+            SnackBar(
+              content: Text(t['analysis_saved'] ?? 'Analysis saved to history!'),
               backgroundColor: AppTheme.primaryColor,
               behavior: SnackBarBehavior.floating,
             ),
@@ -182,16 +236,11 @@ class _ProfitCalculatorScreenState extends ConsumerState<ProfitCalculatorScreen>
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
       ),
       actions: [
-        GestureDetector(
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-            child: photoUrl == null ? const Icon(Icons.person) : null,
-          ),
+        IconButton(
+          icon: const Icon(Icons.share, color: AppTheme.primaryColor),
+          onPressed: _shareCurrentAnalysis,
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 8),
       ],
     );
   }

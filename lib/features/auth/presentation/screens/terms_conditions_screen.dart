@@ -30,6 +30,8 @@ class TermsAndConditionsScreen extends StatelessWidget {
               'While we strive for accuracy, Mandi prices and AI predictions are for guidance only. Market conditions can change rapidly.'),
             _buildSection('4. Permissions', 
               'By using this app, you grant permission to access your Location for local data and Notifications for critical price alerts.'),
+            _buildSection('5. Affiliate Links', 
+              'BharatFlow is a participant in the Amazon Services LLC Associates Program, an affiliate advertising program designed to provide a means for apps to earn advertising fees by advertising and linking to Amazon.in. As an Amazon Associate, we earn from qualifying purchases.'),
             const SizedBox(height: 30),
             const Center(
               child: Text('Last Updated: May 2026', style: TextStyle(color: Colors.grey, fontSize: 12)),

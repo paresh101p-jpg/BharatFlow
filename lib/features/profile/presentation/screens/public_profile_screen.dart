@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:bharat_flow/core/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -157,6 +158,101 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     }
   }
 
+  void _sharePublicProfile() async {
+    try {
+      // Show short feedback toast
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preparing profile details to share...'), duration: Duration(seconds: 1)),
+      );
+
+      // 1. Fetch SELL posts (up to 3 items)
+      final sellRes = await Supabase.instance.client
+          .from('store_products')
+          .select()
+          .eq('user_id', widget.userId)
+          .eq('type', 'SELL')
+          .limit(3);
+
+      // 2. Fetch BUY posts (up to 3 items)
+      final buyRes = await Supabase.instance.client
+          .from('store_products')
+          .select()
+          .eq('user_id', widget.userId)
+          .eq('type', 'BUY')
+          .limit(3);
+
+      final sellList = sellRes as List<dynamic>;
+      final buyList = buyRes as List<dynamic>;
+
+      // 3. Format ratings
+      final String ratingStr = _ratingCount > 0 
+          ? '${_rating.toStringAsFixed(1)} ★ ($_ratingCount ratings)' 
+          : 'No reviews yet';
+
+      // 4. Build message content
+      final buffer = StringBuffer();
+      buffer.writeln('🌾 *Kisan Marketplace: Public Profile* 🌾');
+      buffer.writeln('👤 *Name:* ${widget.userName}');
+      buffer.writeln('⭐ *Rating:* $ratingStr');
+      
+      if (_mobileNo != null && _mobileNo!.isNotEmpty) {
+        buffer.writeln('📞 *Contact:* $_mobileNo');
+      }
+      
+      buffer.writeln();
+
+      // Format Sell section
+      buffer.writeln('🛒 *Wants to SELL:*');
+      if (sellList.isEmpty) {
+        buffer.writeln('• No active sale listings.');
+      } else {
+        for (var p in sellList) {
+          final name = p['commodity'] ?? 'Product';
+          final price = p['price'] ?? 'N/A';
+          final qty = p['quantity'] ?? '0';
+          final unit = p['unit'] ?? '';
+          buffer.writeln('• *Name:* $name');
+          buffer.writeln('   *Price:* ₹$price');
+          buffer.writeln('   *Qty:* $qty $unit');
+          buffer.writeln();
+        }
+      }
+
+      // Format Buy section
+      buffer.writeln('🌾 *Wants to BUY:*');
+      if (buyList.isEmpty) {
+        buffer.writeln('• No active buy listings.');
+      } else {
+        for (var p in buyList) {
+          final name = p['commodity'] ?? 'Product';
+          final price = p['price'] ?? 'N/A';
+          final qty = p['quantity'] ?? '0';
+          final unit = p['unit'] ?? '';
+          buffer.writeln('• *Name:* $name');
+          buffer.writeln('   *Price:* ₹$price');
+          buffer.writeln('   *Qty:* $qty $unit');
+          buffer.writeln();
+        }
+      }
+
+      buffer.writeln('📲 Connect on *BharatFlow super app* to trade directly!');
+      buffer.writeln('Download App:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow');
+
+      // 5. Share via share_plus package
+      await Share.share(
+        buffer.toString(),
+        subject: '${widget.userName}\'s Public Profile',
+      );
+    } catch (e) {
+      debugPrint('Error sharing profile: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share profile: $e')),
+        );
+      }
+    }
+  }
+
   void _showFollowersList(String title) {
     showModalBottomSheet(
       context: context,
@@ -240,53 +336,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                   ),
                   const SizedBox(height: 12),
-                  // Rating Section
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => UserReviewsScreen(
-                            targetUserId: widget.userId,
-                            targetUserName: widget.userName,
-                          ),
-                        ),
-                      ).then((_) => _fetchRatingData()); // Refresh ratings on return
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.amber.shade200),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: List.generate(5, (index) {
-                              return Icon(
-                                index < _rating.floor() ? Icons.star : Icons.star_border,
-                                color: Colors.amber,
-                                size: 20,
-                              );
-                            }),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _ratingCount > 0 ? '${_rating.toStringAsFixed(1)} ($_ratingCount Reviews)' : 'No Reviews Yet',
-                            style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.chevron_right_rounded, size: 18, color: Colors.amber.shade800),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Block & Flag Stats Container
+                  // Block, Flag & Review Stats Row (All 3 in 1 line!)
                   ValueListenableBuilder(
                     valueListenable: Hive.box('flagged_users').listenable(),
                     builder: (context, Box flagBox, _) {
@@ -305,65 +355,111 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                           final int finalFlags = (baseFlags % 4) + (isFlagged ? 1 : 0); // 0, 1, 2, or 3 + current status
                           final int finalBlocks = baseBlocks + (isBlocked ? 1 : 0);
                           
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Red Flag count chip
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: finalFlags > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: finalFlags > 0 ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0),
-                                    width: 1,
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // 1. Red Flagged Chip
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: finalFlags > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: finalFlags > 0 ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.flag_rounded, color: finalFlags > 0 ? Colors.red : Colors.grey, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$finalFlags Flagged',
+                                        style: TextStyle(
+                                          color: finalFlags > 0 ? const Color(0xFF991B1B) : const Color(0xFF475569),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.flag, color: finalFlags > 0 ? Colors.red : Colors.grey, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '$finalFlags Red Flagged',
-                                      style: TextStyle(
-                                        color: finalFlags > 0 ? const Color(0xFF991B1B) : const Color(0xFF475569),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                const SizedBox(width: 8),
+                                
+                                // 2. Reviews Chip (InkWell with Tap Navigation)
+                                InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => UserReviewsScreen(
+                                          targetUserId: widget.userId,
+                                          targetUserName: widget.userName,
+                                        ),
                                       ),
+                                    ).then((_) => _fetchRatingData()); // Refresh ratings on return
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.amber.shade200, width: 1),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Block count chip
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: finalBlocks > 0 ? const Color(0xFFFFF7ED) : const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: finalBlocks > 0 ? const Color(0xFFFED7AA) : const Color(0xFFE2E8F0),
-                                    width: 1,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.star_rounded, color: Colors.amber, size: 13),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _ratingCount > 0 ? '${_rating.toStringAsFixed(1)} ($_ratingCount)' : 'No Reviews',
+                                          style: TextStyle(
+                                            color: Colors.amber.shade900, 
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        const Icon(Icons.chevron_right_rounded, size: 12, color: Colors.amber),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.block, color: finalBlocks > 0 ? Colors.orange : Colors.grey, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '$finalBlocks Blocked',
-                                      style: TextStyle(
-                                        color: finalBlocks > 0 ? const Color(0xFF9A3412) : const Color(0xFF475569),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
+                                const SizedBox(width: 8),
+                                
+                                // 3. Blocked Chip
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: finalBlocks > 0 ? const Color(0xFFFFF7ED) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: finalBlocks > 0 ? const Color(0xFFFED7AA) : const Color(0xFFE2E8F0),
+                                      width: 1,
                                     ),
-                                  ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.block_rounded, color: finalBlocks > 0 ? Colors.orange : Colors.grey, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$finalBlocks Blocked',
+                                        style: TextStyle(
+                                          color: finalBlocks > 0 ? const Color(0xFF9A3412) : const Color(0xFF475569),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           );
                         },
                       );
@@ -427,6 +523,19 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _sharePublicProfile,
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text('Share Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade50,
+                        foregroundColor: Colors.blue.shade800,
+                        minimumSize: const Size(double.infinity, 45),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
+                      ),
                     ),
                   ],
                   

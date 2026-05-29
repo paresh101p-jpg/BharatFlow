@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -138,6 +139,8 @@ class _WeatherHistoryScreenState extends State<WeatherHistoryScreen> {
                   _buildChartCard(),
                   const SizedBox(height: 24),
                   _buildRainChartCard(),
+                  const SizedBox(height: 16),
+                  const DynamicAdmobCardWidget(),
                   const SizedBox(height: 24),
                   const Text('YEARLY TRENDS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
                   const SizedBox(height: 12),

@@ -94499,4 +94499,4 @@
         "Harvesting": "Nov-Dec",
         "Duration": "120-150 days"
     }
-]
+, {"Crop":"Mango", "Sowing":"Jun-Aug", "Harvesting":"Apr-Jul", "Duration":"Perennial", "Season":"Kharif", "Category":"Fruit"}, {"Crop":"Banana", "Sowing":"Jun-Sep", "Harvesting":"All Year", "Duration":"Perennial", "Season":"Kharif", "Category":"Fruit"} ]

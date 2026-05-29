@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:bharat_flow/core/providers/auth_providers.dart';
 
 class UserProfile {
@@ -143,7 +144,23 @@ class ProfileRepository {
     String? fullAddress,
     String? mobileNo,
     String? email,
+    String? fullName,
+    String? avatarUrl,
   }) async {
+    final auth = Supabase.instance.client.auth;
+    final currentUser = auth.currentUser;
+    final box = Hive.box('settings');
+
+    final String? resolvedFullName = fullName ?? 
+        currentUser?.userMetadata?['full_name'] ?? 
+        currentUser?.userMetadata?['name'] ?? 
+        box.get('userName');
+
+    final String? resolvedAvatarUrl = avatarUrl ?? 
+        currentUser?.userMetadata?['avatar_url'] ?? 
+        currentUser?.userMetadata?['picture'] ?? 
+        box.get('userPhoto');
+
     final profile = UserProfile(
       id: userId,
       userType: type,
@@ -155,6 +172,8 @@ class ProfileRepository {
       isSetupComplete: true,
       createdAt: DateTime.now(),
       email: email,
+      fullName: resolvedFullName,
+      avatarUrl: resolvedAvatarUrl,
     );
     await updateProfile(profile);
   }
@@ -185,6 +204,7 @@ final profileProvider = FutureProvider<UserProfile?>((ref) async {
 
   try {
     final client = Supabase.instance.client;
+    final box = Hive.box('settings');
 
     // PRIORITY 1: Fetch by Current Session ID (Most accurate)
     if (user != null) {
@@ -193,7 +213,25 @@ final profileProvider = FutureProvider<UserProfile?>((ref) async {
           .select()
           .eq('id', user.id)
           .limit(1);
-      if ((res as List).isNotEmpty) return UserProfile.fromMap(res.first);
+      if ((res as List).isNotEmpty) {
+        final profile = UserProfile.fromMap(res.first);
+        return UserProfile(
+          id: profile.id,
+          userType: profile.userType,
+          birthday: profile.birthday,
+          birthdayEditCount: profile.birthdayEditCount,
+          city: profile.city,
+          language: profile.language,
+          fullAddress: profile.fullAddress,
+          mobileNo: profile.mobileNo,
+          isSetupComplete: profile.isSetupComplete,
+          createdAt: profile.createdAt,
+          addressUpdatedAt: profile.addressUpdatedAt,
+          fullName: profile.fullName ?? user.userMetadata?['full_name'] ?? user.userMetadata?['name'] ?? box.get('userName'),
+          avatarUrl: profile.avatarUrl ?? user.userMetadata?['avatar_url'] ?? user.userMetadata?['picture'] ?? box.get('userPhoto'),
+          email: profile.email ?? user.email ?? box.get('userEmail'),
+        );
+      }
     }
 
     // PRIORITY 2: Fetch by Email (Recovery)
@@ -204,11 +242,36 @@ final profileProvider = FutureProvider<UserProfile?>((ref) async {
           .eq('email', currentEmail)
           .order('is_setup_complete', ascending: false)
           .limit(1);
-      if ((res as List).isNotEmpty) return UserProfile.fromMap(res.first);
+      if ((res as List).isNotEmpty) {
+        final profile = UserProfile.fromMap(res.first);
+        return UserProfile(
+          id: profile.id,
+          userType: profile.userType,
+          birthday: profile.birthday,
+          birthdayEditCount: profile.birthdayEditCount,
+          city: profile.city,
+          language: profile.language,
+          fullAddress: profile.fullAddress,
+          mobileNo: profile.mobileNo,
+          isSetupComplete: profile.isSetupComplete,
+          createdAt: profile.createdAt,
+          addressUpdatedAt: profile.addressUpdatedAt,
+          fullName: profile.fullName ?? user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'] ?? box.get('userName'),
+          avatarUrl: profile.avatarUrl ?? user?.userMetadata?['avatar_url'] ?? user?.userMetadata?['picture'] ?? box.get('userPhoto'),
+          email: profile.email ?? user?.email ?? currentEmail,
+        );
+      }
     }
 
     // Default: Empty profile
-    if (user != null) return UserProfile(id: user.id, email: user.email);
+    if (user != null) {
+      return UserProfile(
+        id: user.id,
+        fullName: user.userMetadata?['full_name'] ?? user.userMetadata?['name'] ?? box.get('userName'),
+        avatarUrl: user.userMetadata?['avatar_url'] ?? user.userMetadata?['picture'] ?? box.get('userPhoto'),
+        email: user.email ?? box.get('userEmail'),
+      );
+    }
   } catch (e) {
     debugPrint('Profile Fetch Error: $e');
   }

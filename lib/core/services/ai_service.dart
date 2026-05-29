@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import '../constants/api_keys.dart';
+import 'package:bharat_flow/core/services/config_service.dart';
 
 class AIService {
   // Google AI Studio API Key from central config
-  static const String _apiKey = ApiKeys.aiServiceGeminiKey;
+  static String get _apiKey => ConfigService.get('ai_service_gemini_key');
   final _model = GenerativeModel(model: 'gemini-1.5-flash-latest', apiKey: _apiKey);
   final _supabase = Supabase.instance.client;
 

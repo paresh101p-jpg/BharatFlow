@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:bharat_flow/features/mandi/data/repositories/mandi_repository.dart';
 import 'package:bharat_flow/features/mandi/presentation/providers/mandi_providers.dart';
 import 'package:bharat_flow/features/mandi/presentation/utils/commodity_utils.dart';
@@ -223,13 +224,10 @@ class _MandiIntelligenceScreenState
                     : ListView.builder(
                         controller: _mandiScrollController,
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                        itemCount: pricesState.items.length + (pricesState.hasMore ? 1 : 0),
+                        itemCount: pricesState.items.length + (pricesState.items.length ~/ 20) + (pricesState.hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index < pricesState.items.length) {
-                            final mandi = pricesState.items[index];
-                            return _mandiCard(context, mandi);
-                          }
-                          if (pricesState.hasMore) {
+                          final totalItemsAndAds = pricesState.items.length + (pricesState.items.length ~/ 20);
+                          if (index >= totalItemsAndAds) {
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 32),
                               child: Center(
@@ -240,7 +238,17 @@ class _MandiIntelligenceScreenState
                               ),
                             );
                           }
-                          return const SizedBox();
+
+                          if (index > 0 && (index + 1) % 21 == 0) {
+                            return const DynamicAdmobGreenCardWidget();
+                          }
+
+                          final dataIndex = index - (index ~/ 21);
+                          if (dataIndex < pricesState.items.length) {
+                            final mandi = pricesState.items[dataIndex];
+                            return _mandiCard(context, mandi);
+                          }
+                          return const SizedBox.shrink();
                         },
                       ),
           ),
@@ -267,20 +275,30 @@ class _MandiIntelligenceScreenState
                       : ListView.builder(
                           controller: _productScrollController,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: prodState.items.length + (prodState.hasMore ? 1 : 0),
+                          itemCount: prodState.items.length + (prodState.items.length ~/ 10) + (prodState.hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            if (index < prodState.items.length) {
-                              return _buildProductListTile(prodState.items[index]);
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 32),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24, height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: _primary.withOpacity(0.5))
+                            final totalItemsAndAds = prodState.items.length + (prodState.items.length ~/ 10);
+                            if (index >= totalItemsAndAds) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 32),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24, height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: _primary.withOpacity(0.5))
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            }
+
+                            if (index > 0 && (index + 1) % 11 == 0) {
+                              return const DynamicAdmobCardWidget();
+                            }
+
+                            final dataIndex = index - (index ~/ 11);
+                            if (dataIndex < prodState.items.length) {
+                              return _buildProductListTile(prodState.items[dataIndex]);
+                            }
+                            return const SizedBox.shrink();
                           },
                         ),
             ),
@@ -494,18 +512,27 @@ class _MandiIntelligenceScreenState
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          img,
-                          width: 55,
-                          height: 55,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 55,
-                            height: 55,
-                            color: _primary.withOpacity(0.1),
-                            child: const Icon(Icons.grass, color: _primary),
-                          ),
-                        ),
+                        child: img.isEmpty
+                            ? Container(
+                                width: 55,
+                                height: 55,
+                                color: const Color(0xFFF9FBF9),
+                                padding: const EdgeInsets.all(6),
+                                child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                              )
+                            : Image.network(
+                                img,
+                                width: 55,
+                                height: 55,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 55,
+                                  height: 55,
+                                  color: const Color(0xFFF9FBF9),
+                                  padding: const EdgeInsets.all(6),
+                                  child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                                ),
+                              ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

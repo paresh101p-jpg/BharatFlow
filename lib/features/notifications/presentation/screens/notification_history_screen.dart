@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -52,10 +53,20 @@ class NotificationHistoryScreen extends StatelessWidget {
           }
 
           return ListView.builder(
-            itemCount: notifications.length,
+            itemCount: notifications.length + (notifications.length ~/ 10),
             padding: const EdgeInsets.all(16),
             itemBuilder: (context, index) {
-              final item = Map<String, dynamic>.from(notifications[index]);
+              if (index > 0 && (index + 1) % 11 == 0) {
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: DynamicAdmobCardWidget(),
+                );
+              }
+
+              final dataIndex = index - (index ~/ 11);
+              if (dataIndex >= notifications.length) return const SizedBox.shrink();
+
+              final item = Map<String, dynamic>.from(notifications[dataIndex]);
               final type = item['type'] ?? 'news';
               
               return Card(

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/location_provider.dart' as core_loc;
+import 'package:bharat_flow/core/providers/settings_provider.dart';
+import 'package:bharat_flow/core/widgets/translated_text.dart';
 
 class SarkariShopScreen extends ConsumerStatefulWidget {
   const SarkariShopScreen({super.key});
@@ -64,12 +66,12 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final loc = ref.watch(core_loc.locationProvider);
+    final t = ref.watch(translationsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Sarkari Shop (Govt Rates)'),
+        title: Text(t['sarkari_shop_title'] ?? 'Sarkari Shop (Govt Rates)'),
         backgroundColor: const Color(0xFF0D47A1),
         foregroundColor: Colors.white,
         actions: [
@@ -89,9 +91,23 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
                 const Icon(Icons.location_on, color: Color(0xFF0D47A1), size: 16),
                 const SizedBox(width: 8),
                 Text(
-                  'Bhav for: ${loc.state} ${loc.city.isNotEmpty ? "> ${loc.city}" : ""}',
+                  '${t['bhav_for'] ?? 'Bhav for: '} ',
                   style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
                 ),
+                TranslatedText(
+                  loc.state,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
+                ),
+                if (loc.city.isNotEmpty) ...[
+                  const Text(
+                    ' > ',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
+                  ),
+                  TranslatedText(
+                    loc.city,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D47A1)),
+                  ),
+                ],
               ],
             ),
           ),
@@ -100,14 +116,14 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
                     ? _buildErrorState()
-                    : _rates.isEmpty
-                        ? _buildEmptyState()
+                        : _rates.isEmpty
+                        ? _buildEmptyState(t)
                         : ListView.builder(
                             itemCount: _rates.length,
                             padding: const EdgeInsets.all(16),
                             itemBuilder: (context, index) {
                               final item = _rates[index];
-                              return _buildRateCard(item);
+                              return _buildRateCard(item, t);
                             },
                           ),
           ),
@@ -116,7 +132,7 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
     );
   }
 
-  Widget _buildRateCard(Map<String, dynamic> item) {
+  Widget _buildRateCard(Map<String, dynamic> item, Map<String, String> t) {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
@@ -141,12 +157,12 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TranslatedText(
                     item['item_name'] ?? 'Unknown Item',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   Text(
-                    'Source: ${item['source_api'] ?? 'Govt Dept'}',
+                    '${t['source'] ?? 'Source'}: ${item['source_api'] ?? 'Govt Dept'}',
                     style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 4),
@@ -154,7 +170,7 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
                     children: [
                       const Icon(Icons.access_time_rounded, size: 10, color: Colors.green),
                       const SizedBox(width: 4),
-                      Text('updated Today', style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                      Text(t['updated_today'] ?? 'updated Today', style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
@@ -172,7 +188,7 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
                   ),
                 ),
                 Text(
-                  'per ${item['unit'] ?? 'unit'}',
+                  '${t['per'] ?? 'per'} ${t[item['unit']?.toString().toLowerCase()] ?? item['unit'] ?? 'unit'}',
                   style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                 ),
               ],
@@ -204,15 +220,15 @@ class _SarkariShopScreenState extends ConsumerState<SarkariShopScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(Map<String, String> t) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.inventory_2_outlined, size: 64, color: Colors.blue.withOpacity(0.2)),
           const SizedBox(height: 16),
-          const Text('No govt rates found for your area'),
-          const Text('Syncing with All India Database...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(t['no_govt_rates_found'] ?? 'No govt rates found for your area'),
+          Text(t['syncing_all_india_db'] ?? 'Syncing with All India Database...', style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
     );

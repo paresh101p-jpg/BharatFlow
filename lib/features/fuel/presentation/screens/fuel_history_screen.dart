@@ -82,9 +82,62 @@ class FuelHistoryScreen extends StatelessWidget {
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final item = history[index];
+                // Filter history to only show price changes
+                var ascendingHistory = history.reversed.toList();
+                List<Map<String, dynamic>> transitions = [];
+                double? currentP;
+                
+                for (var item in ascendingHistory) {
+                  double? p = double.tryParse(item[fuelType.toLowerCase()]?.toString() ?? '');
+                  if (p == null) continue;
+                  
+                  if (currentP == null || p != currentP) {
+                    transitions.add(item);
+                    currentP = p;
+                  }
+                }
+                
+                var filteredHistory = transitions.reversed.toList();
+
+                if (index >= filteredHistory.length) return null;
+
+                final item = filteredHistory[index];
                 final date = DateTime.parse(item['recorded_at']);
-                final dynamic price = item[fuelType.toLowerCase()];
+                final double? currentVal = double.tryParse(item[fuelType.toLowerCase()]?.toString() ?? '');
+                
+                double? prevVal;
+                if (index + 1 < filteredHistory.length) {
+                  prevVal = double.tryParse(filteredHistory[index + 1][fuelType.toLowerCase()]?.toString() ?? '');
+                }
+
+                Widget trendWidget = const SizedBox.shrink();
+                if (currentVal != null && prevVal != null && prevVal > 0) {
+                  double diff = currentVal - prevVal;
+                  double pct = (diff / prevVal) * 100;
+                  bool isUp = diff > 0;
+                  Color trendColor = isUp ? Colors.red : Colors.green;
+                  IconData trendIcon = isUp ? Icons.arrow_upward : Icons.arrow_downward;
+                  
+                  trendWidget = Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: trendColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(trendIcon, size: 12, color: trendColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${pct.abs().toStringAsFixed(2)}% (₹${diff.abs().toStringAsFixed(2)})',
+                          style: TextStyle(fontSize: 11, color: trendColor, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -109,17 +162,31 @@ class FuelHistoryScreen extends StatelessWidget {
                             index == 0 ? "Latest Record" : "Previous Rate",
                             style: TextStyle(fontSize: 11, color: index == 0 ? themeColor : Colors.grey),
                           ),
+                          if (trendWidget is! SizedBox) trendWidget,
                         ],
                       ),
                       Text(
-                        "₹$price",
+                        "₹${currentVal?.toStringAsFixed(2) ?? '...'}",
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: themeColor),
                       ),
                     ],
                   ),
                 );
               },
-              childCount: history.length,
+              childCount: () {
+                var ascendingHistory = history.reversed.toList();
+                List<Map<String, dynamic>> transitions = [];
+                double? currentP;
+                for (var item in ascendingHistory) {
+                  double? p = double.tryParse(item[fuelType.toLowerCase()]?.toString() ?? '');
+                  if (p == null) continue;
+                  if (currentP == null || p != currentP) {
+                    transitions.add(item);
+                    currentP = p;
+                  }
+                }
+                return transitions.length;
+              }(),
             ),
           ),
 

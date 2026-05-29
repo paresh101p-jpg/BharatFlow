@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.8.22'
+    ext.kotlin_version = '2.2.10'
     repositories {
         google()
         mavenCentral()
@@ -8,6 +8,7 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.2.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.gms:google-services:4.4.1'
     }
 }
 
@@ -24,6 +25,24 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
+}
+subprojects {
+    def configureNamespace = { p ->
+        if (p.hasProperty("android")) {
+            if (p.android.namespace == null) {
+                if (p.name == "google_mobile_ads") {
+                    p.android.namespace = "io.flutter.plugins.googlemobileads"
+                } else {
+                    p.android.namespace = "com.example." + p.name.replace("-", "_")
+                }
+            }
+        }
+    }
+    if (project.state.executed) {
+        configureNamespace(project)
+    } else {
+        project.afterEvaluate { configureNamespace(project) }
+    }
 }
 
 tasks.register("clean", Delete) {

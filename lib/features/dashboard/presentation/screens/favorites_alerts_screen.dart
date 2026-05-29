@@ -1,4 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:bharat_flow/core/services/share_manager.dart';
 import 'package:intl/intl.dart';
 import 'package:bharat_flow/core/utils/language_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,6 +66,8 @@ class _FavoritesAlertsScreenState extends ConsumerState<FavoritesAlertsScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const SizedBox(height: 16),
+                const DynamicAdmobCardWidget(),
+                const SizedBox(height: 16),
                 _buildActiveAlertsBanner(hitAlerts, t),
                 const SizedBox(height: 24),
                 _buildPriceAlertsList(alerts, t),
@@ -88,6 +96,13 @@ class _FavoritesAlertsScreenState extends ConsumerState<FavoritesAlertsScreen> {
         t['favorites_alerts'] ?? 'Favorites & Alerts',
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20), letterSpacing: 1),
       ),
+      actions: [
+        IconButton(
+          onPressed: _shareAppDetails,
+          icon: const Icon(Icons.share, color: Color(0xFF1B5E20)),
+        ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
@@ -233,7 +248,9 @@ class _FavoritesAlertsScreenState extends ConsumerState<FavoritesAlertsScreen> {
       subLabel = originalMandi;
     }
 
-    final imageUrl = CommodityUtils.getImageUrl(originalCommodity);
+    final imageUrl = isProduct 
+        ? CommodityUtils.getImageUrl(originalCommodity)
+        : 'https://images.unsplash.com/photo-1605000797499-95a51c5269ae?q=80&w=1000&auto=format&fit=crop';
     return Stack(
       children: [
         GestureDetector(
@@ -272,10 +289,16 @@ class _FavoritesAlertsScreenState extends ConsumerState<FavoritesAlertsScreen> {
             ),
             child: Column(
               children: [
-                ClipRRect(
+                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   child: Image.network(imageUrl, height: 90, width: double.infinity, fit: BoxFit.cover, 
-                    errorBuilder: (_, __, ___) => Container(height: 90, color: color.withOpacity(0.1), child: Icon(Icons.eco, color: color))),
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 90, 
+                      width: double.infinity,
+                      color: color.withOpacity(0.05), 
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+                    )),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -399,8 +422,29 @@ class _FavoritesAlertsScreenState extends ConsumerState<FavoritesAlertsScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  color: const Color(0xFF1B5E20).withOpacity(0.05),
+                  child: Image.network(
+                    CommodityUtils.getImageUrl(alert.commodity),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      padding: const EdgeInsets.all(4),
+                      color: Colors.white,
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,5 +540,35 @@ class _FavoritesAlertsScreenState extends ConsumerState<FavoritesAlertsScreen> {
 
   void _showAddAlertDialog(BuildContext context, Map<String, String> t, {PriceAlert? existing}) {
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (context) => AddAlertSheet(existing: existing));
+  }
+
+  Future<void> _shareAppDetails() async {
+    try {
+      // 1. Load app logo from assets
+      final byteData = await rootBundle.load('assets/images/logo.png');
+      
+      // 2. Write it to a temporary file
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/bharat_flow_logo.png');
+      await tempFile.writeAsBytes(byteData.buffer.asUint8List(
+        byteData.offsetInBytes, 
+        byteData.lengthInBytes,
+      ));
+
+      // 3. Share the file with the text message (caption)
+      await ShareManager.shareXFiles(
+        context,
+        [XFile(tempFile.path)],
+        text: '🌾 *BharatFlow super app* 🌾\n\nLive Mandi Prices, Proximity Crop Calendars, Kisan Market Store, and Real-time Price Alerts! 📲\n\nDownload Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow',
+        subject: 'Download BharatFlow App',
+      );
+    } catch (e) {
+      // Fallback: If anything fails, share the text link directly
+      await ShareManager.share(
+        context,
+        '🌾 *BharatFlow super app* 🌾\n\nLive Mandi Prices, Proximity Crop Calendars, Kisan Market Store, and Real-time Price Alerts! 📲\n\nDownload Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow',
+        subject: 'Download BharatFlow App',
+      );
+    }
   }
 }

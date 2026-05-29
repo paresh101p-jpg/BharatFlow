@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "277298612621-h2n49b02r5vjdvjbrevnb1qsb60184is.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.BharatFlow",
+            "certificate_hash": "4ee64e458dcf1459ab3ac51733166dce149bc57b"
+          }
+        },
+        {
           "client_id": "277298612621-m80q2h4ue921aujk0jl8t1gt8b7nspad.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

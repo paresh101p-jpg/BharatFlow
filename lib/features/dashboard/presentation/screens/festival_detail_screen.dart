@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/panchang_utils.dart';
 
@@ -28,7 +30,7 @@ class FestivalDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    _buildMainHeader(festival['name'], date),
+                    _buildMainHeader(context, festival['name'], date, panchang),
                     const SizedBox(height: 24),
                     _buildSunMoonSection(panchang),
                     const SizedBox(height: 24),
@@ -39,7 +41,9 @@ class FestivalDetailScreen extends StatelessWidget {
                     _buildChoghadiyaSection(panchang),
                     const SizedBox(height: 24),
                     _buildMuhuratSection(panchang),
-                    const SizedBox(height: 100),
+                    const SizedBox(height: 16),
+                    const DynamicAdmobCardWidget(),
+                    const SizedBox(height: 80),
                   ]),
                 ),
               ),
@@ -113,26 +117,93 @@ class FestivalDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMainHeader(String name, DateTime date) {
+  void _shareFestivalDetails(String name, DateTime date, Map<String, dynamic> panchang) async {
+    try {
+      final tithi = panchang['tithi']?.toString() ?? 'N/A';
+      final nakshatra = panchang['nakshatra']?.toString() ?? 'N/A';
+      final yoga = panchang['yoga']?.toString() ?? 'N/A';
+      final karan = panchang['karan']?.toString() ?? 'N/A';
+      
+      final sunrise = panchang['sunrise']?.toString() ?? 'N/A';
+      final sunset = panchang['sunset']?.toString() ?? 'N/A';
+      
+      final sowing = panchang['sowing_muhurat']?.toString() ?? 'N/A';
+      final harvesting = panchang['harvesting_muhurat']?.toString() ?? 'N/A';
+      final tractor = panchang['tractor_muhurat']?.toString() ?? 'N/A';
+      
+      final abhijit = panchang['abhijit']?.toString() ?? 'N/A';
+
+      final buffer = StringBuffer();
+      buffer.writeln('🌾 *BharatFlow Panchang & Krishi Samachar* 🌾');
+      buffer.writeln('🎉 *Festival:* $name');
+      buffer.writeln('📅 *Date:* ${date.day}/${date.month}/${date.year}');
+      buffer.writeln();
+      buffer.writeln('🌅 *Sunrise:* $sunrise | 🌇 *Sunset:* $sunset');
+      buffer.writeln();
+      buffer.writeln('📜 *Panchang Details:*');
+      buffer.writeln('• *Tithi:* $tithi');
+      buffer.writeln('• *Nakshatra:* $nakshatra');
+      buffer.writeln('• *Yoga:* $yoga');
+      buffer.writeln('• *Karan:* $karan');
+      buffer.writeln();
+      buffer.writeln('🚜 *Krishi Muhurat:*');
+      buffer.writeln('• *Sowing:* $sowing');
+      buffer.writeln('• *Harvesting:* $harvesting');
+      buffer.writeln('• *Tractor Purchase:* $tractor');
+      buffer.writeln();
+      buffer.writeln('✨ *Abhijit Muhurat:* $abhijit');
+      buffer.writeln();
+      buffer.writeln('📲 Stay connected with direct local Krishi Panchang alerts on *BharatFlow app*!');
+      buffer.writeln('Download App Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow');
+
+      await Share.share(
+        buffer.toString(),
+        subject: 'Festival Panchang Details: $name',
+      );
+    } catch (e) {
+      debugPrint('Error sharing festival details: $e');
+    }
+  }
+
+  Widget _buildMainHeader(BuildContext context, String name, DateTime date, Map<String, dynamic> panchang) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)]),
         borderRadius: BorderRadius.circular(30),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('UPCOMING FESTIVAL', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-          const SizedBox(height: 8),
-          Text(name, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, color: Colors.white70, size: 14),
-              const SizedBox(width: 8),
-              Text('${date.day}/${date.month}/${date.year}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('UPCOMING FESTIVAL', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                const SizedBox(height: 8),
+                Text(name, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, color: Colors.white70, size: 14),
+                    const SizedBox(width: 8),
+                    Text('${date.day}/${date.month}/${date.year}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => _shareFestivalDetails(name, date, panchang),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.share, color: Colors.white, size: 22),
+            ),
           ),
         ],
       ),

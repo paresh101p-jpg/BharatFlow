@@ -43,13 +43,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         await box.put('userName', googleUser.displayName);
         await box.put('userPhoto', googleUser.photoUrl);
 
-        await [
-          Permission.location,
-          Permission.notification,
-          Permission.camera,
-        ].request();
+        try {
+          await [
+            Permission.location,
+            Permission.notification,
+            Permission.camera,
+          ].request();
+        } catch (e) {
+          debugPrint('Error requesting permissions during sign-in: $e');
+        }
 
-        if (mounted) {
+        if (context.mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const DashboardScreen()),
@@ -129,6 +133,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
               ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () async {
+                final box = Hive.box('settings');
+                await box.put('isLoggedIn', true);
+                await box.put('userEmail', 'reviewer@bharatflow.com');
+                await box.put('userName', 'Play Store Reviewer');
+                await box.put('userPhoto', '');
+
+                try {
+                  await [
+                    Permission.location,
+                    Permission.notification,
+                    Permission.camera,
+                  ].request();
+                } catch (e) {
+                  debugPrint('Error requesting permissions in guest mode: $e');
+                }
+
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const DashboardScreen()),
+                  );
+                }
+              },
+              child: const Text(
+                'Explore as Guest (Reviewer Mode)',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: () => Navigator.push(

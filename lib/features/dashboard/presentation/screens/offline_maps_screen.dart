@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +13,7 @@ import 'dart:async';
 import '../../../../core/theme/app_theme.dart';
 import 'package:bharat_flow/features/profile/presentation/screens/profile_screen.dart';
 import 'package:bharat_flow/features/mandi/data/repositories/mandi_repository.dart';
+import 'package:bharat_flow/features/profile/data/repositories/profile_repository.dart';
 
 class MapRegion {
   final String id;
@@ -268,7 +270,17 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
   @override
   Widget build(BuildContext context) {
     final googleUserAsync = ref.watch(googleUserProvider);
-    final photoUrl = googleUserAsync.value?.photoUrl;
+    final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.value;
+    final googleUser = googleUserAsync.value;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final box = Hive.box('settings');
+
+    final String? photoUrl = profile?.avatarUrl ??
+        googleUser?.photoUrl ??
+        authUser?.userMetadata?['avatar_url'] ??
+        authUser?.userMetadata?['picture'] ??
+        box.get('userPhoto');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF8),
@@ -285,6 +297,8 @@ class _OfflineMapsScreenState extends ConsumerState<OfflineMapsScreen> {
                 _buildSectionTitle('Download New Region'),
                 const SizedBox(height: 12),
                 _buildInteractiveMap(),
+                const SizedBox(height: 16),
+                const DynamicAdmobCardWidget(),
                 const SizedBox(height: 24),
                 _buildSectionTitle('Downloaded Maps'),
                 const SizedBox(height: 12),

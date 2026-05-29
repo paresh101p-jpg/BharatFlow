@@ -20,6 +20,17 @@ class MandiProductDetailScreen extends ConsumerWidget {
     final t = ref.watch(translationsProvider);
     final selectedUnit = ref.watch(priceUnitProvider);
     
+    // Deduplicate varietyList to only show unique variety + grade combinations
+    final Set<String> seen = {};
+    final List<Map<String, dynamic>> uniqueVarieties = [];
+    for (var item in varietyList) {
+      final key = '${item['variety']}_${item['grade']}';
+      if (!seen.contains(key)) {
+        seen.add(key);
+        uniqueVarieties.add(item);
+      }
+    }
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -84,10 +95,10 @@ class MandiProductDetailScreen extends ConsumerWidget {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 10),
-              itemCount: varietyList.length,
+              itemCount: uniqueVarieties.length,
               separatorBuilder: (context, index) => const Divider(height: 1, indent: 20, endIndent: 20),
               itemBuilder: (context, index) {
-                final item = varietyList[index];
+                final item = uniqueVarieties[index];
                 final rawPrice = (item['modal_price'] as num).toDouble();
                 final rawMin = (item['min_price'] as num).toDouble();
                 final rawMax = (item['max_price'] as num).toDouble();

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -85,6 +87,35 @@ class _MarketNewsHubScreenState extends ConsumerState<MarketNewsHubScreen> with 
     }
   }
 
+  void _shareNewsItem(NewsItem news) async {
+    try {
+      final formattedDate = DateFormat('dd MMM yyyy').format(news.publishedAt);
+      final title = news.title;
+      final summary = news.summary;
+      final sourceUrl = news.sourceUrl;
+      
+      final buffer = StringBuffer();
+      buffer.writeln('📰 *BharatFlow: Latest Market News* 📰');
+      buffer.writeln('📅 *Date:* $formattedDate');
+      buffer.writeln('\n🔊 *Title:* $title');
+      buffer.writeln('\n📝 *Summary:* $summary');
+      
+      if (sourceUrl.isNotEmpty) {
+        buffer.writeln('\n🔗 *Read Full News:* $sourceUrl');
+      }
+      
+      buffer.writeln('\n📲 For more daily agricultural & government scheme updates, download *BharatFlow app*!');
+      buffer.writeln('Download Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow');
+
+      await Share.share(
+        buffer.toString(),
+        subject: 'Agriculture News: $title',
+      );
+    } catch (e) {
+      debugPrint('Error sharing news: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final newsAsync = ref.watch(newsProvider);
@@ -120,9 +151,11 @@ class _MarketNewsHubScreenState extends ConsumerState<MarketNewsHubScreen> with 
                     _buildBreakingAlerts(newsList.take(3).toList()),
                     const SizedBox(height: 16),
                     _buildNotificationToggle(),
+                    const SizedBox(height: 16),
+                    const DynamicAdmobCardWidget(),
                     const SizedBox(height: 24),
                     _buildTopStories(newsList.skip(3).toList()),
-                    const SizedBox(height: 100),
+                    const SizedBox(height: 80),
                   ]),
                 );
               },
@@ -435,17 +468,26 @@ class _MarketNewsHubScreenState extends ConsumerState<MarketNewsHubScreen> with 
   // Baaki saari news — list style
   Widget _buildTopStories(List<NewsItem> news) {
     if (news.isEmpty) return const SizedBox();
+    
+    final List<Widget> children = [
+      const Text('Sabhi Khabarein',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87)),
+      const SizedBox(height: 12),
+    ];
+
+    for (int i = 0; i < news.length; i++) {
+      children.add(_storyCard(news[i]));
+      if (i > 0 && (i + 1) % 5 == 0) {
+        children.add(const DynamicAdmobCardWidget());
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Sabhi Khabarein',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87)),
-        const SizedBox(height: 12),
-        ...news.map((item) => _storyCard(item)),
-      ],
+      children: children,
     );
   }
 
@@ -488,12 +530,28 @@ class _MarketNewsHubScreenState extends ConsumerState<MarketNewsHubScreen> with 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    DateFormat('dd MMM yyyy').format(news.publishedAt),
-                    style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DateFormat('dd MMM yyyy').format(news.publishedAt),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      GestureDetector(
+                        onTap: () => _shareNewsItem(news),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.share, size: 12, color: Colors.green.shade800),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(news.title,

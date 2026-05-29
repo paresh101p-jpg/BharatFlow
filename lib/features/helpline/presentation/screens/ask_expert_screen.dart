@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/services/admob_service.dart';
 import '../providers/helpline_provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class AskExpertScreen extends ConsumerStatefulWidget {
   const AskExpertScreen({super.key});
@@ -27,8 +29,9 @@ class _AskExpertScreenState extends ConsumerState<AskExpertScreen>
   // Selected category chip for the Community Forum
   String _selectedForumCategory = 'All';
 
-  // State to track locally liked community questions for dynamic response
+  // State to track locally liked/disliked community questions for dynamic response
   final Set<String> _likedQuestions = {};
+  final Set<String> _dislikedQuestions = {};
 
   final List<Map<String, String>> _categories = [
     {'key': 'crop_disease', 'label_en': 'Crop Disease', 'label_hi': 'फसल रोग', 'icon': '🌾'},
@@ -598,7 +601,41 @@ class _AskExpertScreenState extends ConsumerState<AskExpertScreen>
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: _isSubmitting ? null : _submitQuestion,
+              onPressed: _isSubmitting ? null : () async {
+                if (_questionController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isHindi
+                            ? 'कृपया अपना सवाल पहले लिखें!'
+                            : 'Please write your question first!',
+                      ),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+
+                setState(() => _isSubmitting = true);
+                final canSubmit = await ref.read(helplineNotifierProvider.notifier).canSubmitQuestion();
+                setState(() => _isSubmitting = false);
+
+                if (!canSubmit) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isHindi
+                            ? 'लिमिट पूरी हुई: आप 1 दिन में सिर्फ 3 सवाल पूछ सकते हैं।'
+                            : 'Limit reached: You can only ask 3 questions per day.',
+                      ),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+
+                AdmobService.showRewardConfirmationDialog(context, _submitQuestion);
+              },
               icon: _isSubmitting
                   ? const SizedBox(
                       width: 20,
@@ -635,7 +672,7 @@ class _AskExpertScreenState extends ConsumerState<AskExpertScreen>
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(helplineQuestionsProvider);
+        ref.invalidate(allHelplineQuestionsProvider);
       },
       color: AppTheme.primaryColor,
       child: questionsAsync.when(
@@ -727,7 +764,7 @@ class _AskExpertScreenState extends ConsumerState<AskExpertScreen>
                 Text(err.toString(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => ref.invalidate(helplineQuestionsProvider),
+                  onPressed: () => ref.invalidate(allHelplineQuestionsProvider),
                   child: Text(isHindi ? 'पुनः प्रयास करें' : 'Try Again'),
                 ),
               ],
@@ -765,7 +802,7 @@ class _AskExpertScreenState extends ConsumerState<AskExpertScreen>
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(communityForumProvider);
+              ref.invalidate(allHelplineQuestionsProvider);
             },
             color: AppTheme.primaryColor,
             child: forumAsync.when(
@@ -818,18 +855,31 @@ class _AskExpertScreenState extends ConsumerState<AskExpertScreen>
                     final item = filtered[i];
                     final itemId = item['id'].toString();
                     final isLiked = _likedQuestions.contains(itemId);
+                    final isDisliked = _dislikedQuestions.contains(itemId);
 
                     return _ForumQuestionCard(
                       item: item,
                       categoryLabel: _getCategoryLabel(item['category'] ?? 'other', t),
                       isHindi: isHindi,
                       isLiked: isLiked,
+                      isDisliked: isDisliked,
                       onLikeTap: () {
                         setState(() {
                           if (isLiked) {
                             _likedQuestions.remove(itemId);
                           } else {
                             _likedQuestions.add(itemId);
+                            _dislikedQuestions.remove(itemId);
+                          }
+                        });
+                      },
+                      onDislikeTap: () {
+                        setState(() {
+                          if (isDisliked) {
+                            _dislikedQuestions.remove(itemId);
+                          } else {
+                            _dislikedQuestions.add(itemId);
+                            _likedQuestions.remove(itemId);
                           }
                         });
                       },
@@ -910,14 +960,11 @@ class _VoiceDictationDialog extends StatefulWidget {
 class _VoiceDictationDialogState extends State<_VoiceDictationDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  Timer? _dictationTimer;
-  Timer? _animationTimer;
-  int _secondsElapsed = 0;
+  stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
   String _typedText = '';
-  int _charIndex = 0;
-  bool _isTypingDone = false;
-
-  late final String _targetQuery;
+  int _secondsElapsed = 0;
+  Timer? _animationTimer;
 
   @override
   void initState() {
@@ -927,56 +974,56 @@ class _VoiceDictationDialogState extends State<_VoiceDictationDialog>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _targetQuery = widget.isHindi
-        ? 'सर, मेरी कपास की फसल में पत्तों पर लाल धब्बे आ रहे हैं और कुछ पौधे मुरझा रहे हैं, इसके लिए कौन सा कीटनाशक या दवा का उपयोग करूं?'
-        : 'Sir, red spots are appearing on the leaves of my cotton crop and some plants are wilting. What pesticide or medicine should I use?';
-
-    // Start timer for pulsating voice scale waves
-    _animationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _secondsElapsed++;
-        });
-      }
-    });
-
-    // Start simulated character-by-character typing after a brief delay
-    Future.delayed(const Duration(milliseconds: 800), () {
-      _startSimulatedTyping();
-    });
+    _startListening();
   }
 
-  void _startSimulatedTyping() {
-    const duration = Duration(milliseconds: 40);
-    _dictationTimer = Timer.periodic(duration, (timer) {
-      if (!mounted) return;
+  void _startListening() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          if (mounted) setState(() => _isListening = false);
+        }
+      },
+      onError: (errorNotification) {
+        print('Error: $errorNotification');
+        if (mounted) setState(() => _isListening = false);
+      },
+    );
 
-      if (_charIndex < _targetQuery.length) {
-        setState(() {
-          _typedText += _targetQuery[_charIndex];
-          _charIndex++;
-        });
-      } else {
-        setState(() {
-          _isTypingDone = true;
-        });
-        _dictationTimer?.cancel();
-        // Automatically close dialog after typing is complete
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          if (mounted) {
-            widget.onDictationComplete(_typedText);
-            Navigator.pop(context);
+    if (available) {
+      if (mounted) {
+        setState(() => _isListening = true);
+        _animationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (mounted && _isListening) {
+            setState(() => _secondsElapsed++);
           }
         });
       }
-    });
+      _speech.listen(
+        onResult: (result) {
+          if (mounted) {
+            setState(() {
+              _typedText = result.recognizedWords;
+            });
+          }
+        },
+        localeId: widget.isHindi ? 'hi_IN' : 'en_US',
+      );
+    } else {
+      print("The user has denied the use of speech recognition.");
+    }
+  }
+
+  void _stopListening() {
+    _speech.stop();
+    setState(() => _isListening = false);
   }
 
   @override
   void dispose() {
     _animationController.dispose();
-    _dictationTimer?.cancel();
     _animationTimer?.cancel();
+    _speech.cancel();
     super.dispose();
   }
 
@@ -1018,7 +1065,7 @@ class _VoiceDictationDialogState extends State<_VoiceDictationDialog>
             Stack(
               alignment: Alignment.center,
               children: [
-                if (!_isTypingDone) ...[
+                if (_isListening) ...[
                   // Outer Wave 2
                   AnimatedBuilder(
                     animation: _animationController,
@@ -1055,24 +1102,33 @@ class _VoiceDictationDialogState extends State<_VoiceDictationDialog>
                   ),
                 ],
                 // Center Mic Button
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.mic_rounded,
-                    color: Colors.white,
-                    size: 36,
+                GestureDetector(
+                  onTap: () {
+                    if (_isListening) {
+                      _stopListening();
+                    } else {
+                      _startListening();
+                    }
+                  },
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Icon(
+                      _isListening ? Icons.mic_rounded : Icons.mic_off_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
                   ),
                 ),
               ],
@@ -1138,6 +1194,7 @@ class _VoiceDictationDialogState extends State<_VoiceDictationDialog>
               children: [
                 TextButton(
                   onPressed: () {
+                    _stopListening();
                     Navigator.pop(context);
                   },
                   child: Text(
@@ -1147,6 +1204,7 @@ class _VoiceDictationDialogState extends State<_VoiceDictationDialog>
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
+                    _stopListening();
                     widget.onDictationComplete(_typedText);
                     Navigator.pop(context);
                   },
@@ -1372,7 +1430,7 @@ class _PersonalQuestionCardState extends ConsumerState<_PersonalQuestionCard> {
   @override
   Widget build(BuildContext context) {
     final status = widget.question['status'] ?? 'Pending';
-    final isReplied = status == 'Replied';
+    final isReplied = status == 'Replied' || status == 'Approved';
     final isRejected = status == 'Rejected';
     final isResolved = isReplied || isRejected;
     final text = widget.question['question_text'] ?? '';
@@ -1582,8 +1640,7 @@ class _PersonalQuestionCardState extends ConsumerState<_PersonalQuestionCard> {
                     ),
                   ),
                 ),
-                child: isReplied
-                    ? Column(
+child: isReplied ? (answerText != null && answerText.toString().trim().isNotEmpty) ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
@@ -1658,7 +1715,7 @@ class _PersonalQuestionCardState extends ConsumerState<_PersonalQuestionCard> {
                             ),
                           )
                         ],
-                      )
+                      ) : Padding(padding: const EdgeInsets.all(8.0), child: Text(widget.isHindi ? '???? ???? ????? ?? ??? ?? ?? ????????? ???? ??? ???? ??!' : 'Your question is approved and live in the community forum!', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)))
                     : isRejected
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1772,33 +1829,139 @@ class _PersonalQuestionCardState extends ConsumerState<_PersonalQuestionCard> {
   }
 }
 // ── Tab 3 Card: Community Forum Q&A Card ──────────────────────────────────────
-class _ForumQuestionCard extends StatefulWidget {
+class _ForumQuestionCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> item;
   final String categoryLabel;
   final bool isHindi;
   final bool isLiked;
+  final bool isDisliked;
   final VoidCallback onLikeTap;
+  final VoidCallback onDislikeTap;
 
   const _ForumQuestionCard({
     required this.item,
     required this.categoryLabel,
     required this.isHindi,
     required this.isLiked,
+    required this.isDisliked,
     required this.onLikeTap,
+    required this.onDislikeTap,
   });
 
   @override
-  State<_ForumQuestionCard> createState() => _ForumQuestionCardState();
+  ConsumerState<_ForumQuestionCard> createState() => _ForumQuestionCardState();
 }
 
-class _ForumQuestionCardState extends State<_ForumQuestionCard> {
+class _ForumQuestionCardState extends ConsumerState<_ForumQuestionCard> {
   int _helpfulCount = 0;
+  final TextEditingController _replyController = TextEditingController();
+  bool _isSubmittingReply = false;
 
   @override
   void initState() {
     super.initState();
     // Simulate a dynamic baseline of helpful votes
     _helpfulCount = 5 + (widget.item['question_text'].toString().length % 20);
+  }
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
+
+  void _showReplyDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 24,
+                left: 24,
+                right: 24,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.isHindi ? 'अपना जवाब लिखें' : 'Write your answer',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primaryColor),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _replyController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: widget.isHindi ? 'यहाँ अपना सुझाव टाइप करें...' : 'Type your suggestion here...',
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isSubmittingReply ? null : () async {
+                        if (_replyController.text.trim().isEmpty) return;
+                        setModalState(() { _isSubmittingReply = true; });
+                        
+                        final success = await ref.read(helplineNotifierProvider.notifier).submitAnswer(
+                          questionId: widget.item['id'].toString(),
+                          answerText: _replyController.text.trim(),
+                        );
+                        
+                        setModalState(() { _isSubmittingReply = false; });
+                        
+                        if (success) {
+                           _replyController.clear();
+                           Navigator.pop(context);
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             SnackBar(
+                               content: Text(widget.isHindi ? 'जवाब जोड़ा गया!' : 'Answer added!'),
+                               backgroundColor: AppTheme.primaryColor,
+                             )
+                           );
+                        } else {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             const SnackBar(
+                               content: Text('Failed to submit answer'),
+                               backgroundColor: Colors.redAccent,
+                             )
+                           );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: _isSubmittingReply 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : Text(widget.isHindi ? 'भेजें (Submit)' : 'Submit Answer', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  )
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
   }
 
   @override
@@ -1819,18 +1982,37 @@ class _ForumQuestionCardState extends State<_ForumQuestionCard> {
         ? 'गुप्त किसान (निवासी: $city, $state)'
         : 'Anonymous Kisan (from $city, $state)';
 
-    return Card(
+    // Fetch community answers
+    final answersAsync = ref.watch(helplineAnswersProvider(widget.item['id'].toString()));
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.12), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppTheme.primaryColor.withOpacity(0.04),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.12), width: 1.5),
       ),
-      color: Colors.white,
-      elevation: 4,
-      shadowColor: AppTheme.primaryColor.withOpacity(0.08),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(23),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // Header (Anonymized Sender & Category Tag)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -1930,8 +2112,7 @@ class _ForumQuestionCardState extends State<_ForumQuestionCard> {
           ],
 
           const SizedBox(height: 16),
-
-          // Answer Section (Green Container)
+if (answerText.isNotEmpty) // Expert Answer Section (Green Container)
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -1977,62 +2158,180 @@ class _ForumQuestionCardState extends State<_ForumQuestionCard> {
             ),
           ),
 
+          // Community Answers Section
+          answersAsync.when(
+            data: (answers) {
+              if (answers.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.isHindi ? 'किसानों के सुझाव (${answers.length})' : 'Community Answers (${answers.length})',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    ...answers.map((ans) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundImage: ans['user_avatar'] != null ? NetworkImage(ans['user_avatar']) : null,
+                              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                              child: ans['user_avatar'] == null ? const Icon(Icons.person, size: 16, color: AppTheme.primaryColor) : null,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    ans['user_name'] ?? 'Kisan',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ans['answer_text'] ?? '',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[800]),
+                                  ),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              );
+            },
+            loading: () => const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+
           // Footer (Helpful button & Share option)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Helpful vote button
-                InkWell(
-                  onTap: () {
-                    widget.onLikeTap();
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: widget.isLiked
-                          ? AppTheme.accentColor.withOpacity(0.12)
-                          : Colors.grey.withOpacity(0.06),
+                Expanded(child: Row(
+                  children: [
+                    // Helpful vote button
+                    InkWell(
+                      onTap: () {
+                        widget.onLikeTap();
+                      },
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: widget.isLiked
-                            ? AppTheme.accentColor.withOpacity(0.4)
-                            : Colors.transparent,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          widget.isLiked ? Icons.thumb_up_rounded : Icons.thumb_up_outlined,
-                          size: 14,
-                          color: widget.isLiked ? AppTheme.accentColor : Colors.grey[700],
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          widget.isHindi
-                              ? 'मददगार (${_helpfulCount + (widget.isLiked ? 1 : 0)})'
-                              : 'Helpful (${_helpfulCount + (widget.isLiked ? 1 : 0)})',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: widget.isLiked ? AppTheme.accentColor : Colors.grey[700],
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: widget.isLiked
+                              ? AppTheme.accentColor.withOpacity(0.12)
+                              : Colors.grey.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: widget.isLiked
+                                ? AppTheme.accentColor.withOpacity(0.4)
+                                : Colors.transparent,
+                            width: 1,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            Icon(
+                              widget.isLiked ? Icons.thumb_up_rounded : Icons.thumb_up_outlined,
+                              size: 14,
+                              color: widget.isLiked ? AppTheme.accentColor : Colors.grey[700],
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              widget.isHindi
+                                  ? 'मददगार (${_helpfulCount + (widget.isLiked ? 1 : (widget.isDisliked ? -1 : 0))})'
+                                  : 'Helpful (${_helpfulCount + (widget.isLiked ? 1 : (widget.isDisliked ? -1 : 0))})',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: widget.isLiked ? AppTheme.accentColor : Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                    const SizedBox(width: 8),
+                    // Dislike button
+                    InkWell(
+                      onTap: () {
+                        widget.onDislikeTap();
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: widget.isDisliked
+                              ? Colors.red.withOpacity(0.12)
+                              : Colors.grey.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: widget.isDisliked
+                                ? Colors.red.withOpacity(0.4)
+                                : Colors.transparent,
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          widget.isDisliked ? Icons.thumb_down_rounded : Icons.thumb_down_outlined,
+                          size: 14,
+                          color: widget.isDisliked ? Colors.red : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    // Reply Button
+                    InkWell(
+                      onTap: _showReplyDialog,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.reply_rounded, size: 14, color: AppTheme.primaryColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              widget.isHindi ? 'जवाब दें' : 'Reply',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ],
+                  )),
 
                 // Share button
                 IconButton(
                   onPressed: () {
                     final shareText = widget.isHindi
-                        ? '''🌾 *भारतफ्लो कृषि समाधान (BharatFlow Helpline)* 🌾\n\n📝 *किसान का सवाल:*\n"$text"\n\n🙋 *किसान का स्थान:* $city, $state\n\n👨‍🔬 *कृषि विशेषज्ञ का वैज्ञानिक समाधान:*\n"$answerText"\n\n👉 इस तरह के और वैज्ञानिक समाधान और मंडी भाव जानने के लिए आज ही *BharatFlow App* डाउनलोड करें:\nhttps://play.google.com/store/apps/details?id=com.bharat_flow'''
-                        : '''🌾 *BharatFlow Agriculture Helpline* 🌾\n\n📝 *Farmer's Query:*\n"$text"\n\n📍 *Farmer Location:* $city, $state\n\n👨‍🔬 *Agri Expert Verified Solution:*\n"$answerText"\n\n👉 For more agricultural solutions and live mandi rates, download the *BharatFlow App* now:\nhttps://play.google.com/store/apps/details?id=com.bharat_flow''';
+                        ? '''🌾 *भारतफ्लो कृषि समाधान (BharatFlow Helpline)* 🌾\n\n📝 *किसान का सवाल:*\n"$text"\n\n🙋 *किसान का स्थान:* $city, $state\n\n👨‍🔬 *कृषि विशेषज्ञ का वैज्ञानिक समाधान:*\n"$answerText"\n\n👉 इस तरह के और वैज्ञानिक समाधान और मंडी भाव जानने के लिए आज ही *BharatFlow App* डाउनलोड करें:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow'''
+                        : '''🌾 *BharatFlow Agriculture Helpline* 🌾\n\n📝 *Farmer's Query:*\n"$text"\n\n📍 *Farmer Location:* $city, $state\n\n👨‍🔬 *Agri Expert Verified Solution:*\n"$answerText"\n\n👉 For more agricultural solutions and live mandi rates, download the *BharatFlow App* now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow''';
 
                     Share.share(
                       shareText,
@@ -2053,6 +2352,14 @@ class _ForumQuestionCardState extends State<_ForumQuestionCard> {
           ),
         ],
       ),
+      ),
+      ),
     );
   }
 }
+
+
+
+
+
+

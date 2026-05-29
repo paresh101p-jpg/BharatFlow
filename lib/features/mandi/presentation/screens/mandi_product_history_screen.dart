@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/mandi_providers.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/settings_provider.dart';
@@ -91,17 +93,20 @@ Widget build(BuildContext context) {
             ],
           ),
           const SizedBox(height: 16),
-          if (widget.variety != null || widget.grade != null)
-            Row(
-              children: [
-                if (widget.variety != null)
-                  _headerChip(widget.variety!, Colors.white24),
-                if (widget.grade != null) ...[
-                  const SizedBox(width: 8),
-                  _headerChip(widget.grade!, Colors.white24),
-                ],
+          Row(
+            children: [
+              if (widget.variety != null) ...[
+                _headerChip(widget.variety!, Colors.white24),
+                const SizedBox(width: 8),
               ],
-            ),
+              if (widget.grade != null) ...[
+                _headerChip(widget.grade!, Colors.white24),
+                const SizedBox(width: 8),
+              ],
+              const Spacer(),
+              _buildShareButton(),
+            ],
+          ),
         ],
       ),
     );
@@ -389,7 +394,16 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildHistoryList(List<Map<String, dynamic>> data, Map<String, String> t) {
-    final sortedData = List<Map<String, dynamic>>.from(data).reversed.toList();
+    List<Map<String, dynamic>> transitions = [];
+    double? currentP;
+    for (var item in data) {
+      double p = (item['modal_price'] as num).toDouble();
+      if (currentP == null || p != currentP) {
+        transitions.add(item);
+        currentP = p;
+      }
+    }
+    final sortedData = transitions.reversed.toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,7 +454,9 @@ Widget build(BuildContext context) {
             );
           },
         ),
-        const SizedBox(height: 100),
+        const SizedBox(height: 16),
+        const DynamicAdmobCardWidget(),
+        const SizedBox(height: 80),
       ],
     );
   }
@@ -480,5 +496,122 @@ Widget build(BuildContext context) {
         }).toList(),
       ),
     );
+  }
+
+  Widget _buildShareButton() {
+    return GestureDetector(
+      onTap: _shareProductHistory,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white24,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.share, color: Colors.white, size: 14),
+            SizedBox(width: 6),
+            Text(
+              'Share',
+              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareProductHistory() {
+    final historyKey = "${widget.mandiName}|${widget.commodityName}|$_selectedMonths";
+    final historyState = ref.read(mandiProductHistoryProvider(historyKey));
+
+    if (historyState is! AsyncData<List<Map<String, dynamic>>>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait for historical data to load...')),
+      );
+      return;
+    }
+
+    final data = historyState.value;
+    if (data.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No history data available to share.')),
+      );
+      return;
+    }
+
+    final selectedUnit = ref.read(priceUnitProvider);
+    double minPrice = double.infinity;
+    double maxPrice = 0;
+    double avgPrice = 0;
+    for (var item in data) {
+      final p = (item['modal_price'] as num).toDouble();
+      if (p < minPrice) minPrice = p;
+      if (p > maxPrice) maxPrice = p;
+      avgPrice += p;
+    }
+    avgPrice /= data.length;
+
+    // Conversion logic
+    double convert(double p) {
+      if (selectedUnit == 'KG') return p / 100;
+      if (selectedUnit == '20 KG') return p / 5;
+      if (selectedUnit == '40 KG') return p / 2.5;
+      return p;
+    }
+
+    final displayMin = convert(minPrice);
+    final displayMax = convert(maxPrice);
+    final displayAvg = convert(avgPrice);
+    final suffix = selectedUnit == 'Quintal' ? '/q' : selectedUnit == 'KG' ? '/kg' : selectedUnit == '20 KG' ? '/20k' : '/40k';
+
+    final buffer = StringBuffer();
+    buffer.writeln('🌾 *BharatFlow - Price History* 🌾\n');
+    buffer.writeln('📦 *Commodity:* ${widget.commodityName}');
+    buffer.writeln('📍 *Mandi:* ${widget.mandiName}');
+    if (widget.variety != null) {
+      buffer.writeln('🌱 *Variety:* ${widget.variety}');
+    }
+    if (widget.grade != null) {
+      buffer.writeln('🏷️ *Grade:* ${widget.grade}');
+    }
+    buffer.writeln('⏱️ *Range:* Last $_selectedMonths Months');
+    buffer.writeln('⚖️ *Unit:* $selectedUnit\n');
+
+    buffer.writeln('📊 *Price Summary:*');
+    buffer.writeln('📉 Min Price: ₹${displayMin.toStringAsFixed(displayMin < 100 ? 1 : 0)}$suffix');
+    buffer.writeln('📈 Max Price: ₹${displayMax.toStringAsFixed(displayMax < 100 ? 1 : 0)}$suffix');
+    buffer.writeln('🔄 Avg Price: ₹${displayAvg.toStringAsFixed(displayAvg < 100 ? 1 : 0)}$suffix\n');
+
+    buffer.writeln('📅 *Price Logs:*');
+    List<Map<String, dynamic>> transitions = [];
+    double? currentP;
+    for (var item in data) {
+      double p = (item['modal_price'] as num).toDouble();
+      if (currentP == null || p != currentP) {
+        transitions.add(item);
+        currentP = p;
+      }
+    }
+    final sortedData = transitions.reversed.toList();
+    // Let's take up to the top 10 logs to keep the share message clean and under limits
+    final logLimit = sortedData.length > 10 ? 10 : sortedData.length;
+    for (int i = 0; i < logLimit; i++) {
+      final item = sortedData[i];
+      final date = item['arrival_date'] as String;
+      final rawPrice = (item['modal_price'] as num).toDouble();
+      final price = convert(rawPrice);
+      final formattedDate = DateFormat('dd MMM yyyy').format(DateTime.parse(date));
+      buffer.writeln('• $formattedDate: ₹${price.toStringAsFixed(price < 100 ? 1 : 0)}$suffix');
+    }
+    if (sortedData.length > 10) {
+      buffer.writeln('... and ${sortedData.length - 10} more logs.');
+    }
+
+    buffer.writeln('\n📲 Download *BharatFlow App* for live mandi prices & crop calendar:');
+    buffer.writeln('https://play.google.com/store/apps/details?id=com.BharatFlow');
+
+    Share.share(buffer.toString(), subject: 'Price History of ${widget.commodityName} at ${widget.mandiName}');
   }
 }

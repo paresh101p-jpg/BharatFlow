@@ -1,0 +1,1 @@
+import 'package:supabase_flutter/supabase_flutter.dart'; void main() { final client = SupabaseClient('url', 'key'); client.from('table').stream(primaryKey: ['id']).eq('a','b'); client.from('table').stream(primaryKey: ['id']).eq('c','d'); }

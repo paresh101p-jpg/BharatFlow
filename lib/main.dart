@@ -8,15 +8,30 @@ import 'core/providers/settings_provider.dart';
 import 'features/profile/presentation/screens/pin_lock_screen.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:bharat_flow/core/services/notification_service.dart';
+import 'package:bharat_flow/core/services/config_service.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'core/constants/api_keys.dart';
 import 'features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'features/splash/presentation/screens/enhanced_splash_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:bharat_flow/features/dashboard/data/repositories/festival_repository.dart';
 import 'package:bharat_flow/features/auth/presentation/screens/login_screen.dart';
+import 'package:bharat_flow/features/mandi/presentation/utils/commodity_utils.dart';
+import 'core/services/ad_blocker_service.dart';
+import 'features/security/presentation/screens/ad_block_warning_screen.dart';
+import 'package:bharat_flow/features/mandi/data/repositories/mandi_repository.dart';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase (Required for Topic Subscriptions & FCM)
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {} 
+
 
   // ✅ FIX 1: autoRefreshToken true kiya — session automatically refresh hoga
   await Supabase.initialize(
@@ -27,6 +42,12 @@ void main() async {
       autoRefreshToken: true, // ✅ Token expire hone se pehle auto refresh
     ),
   );
+
+  // Initialize secure backend remote configurations
+  await ConfigService.initialize();
+
+  // Initialize Google Mobile Ads dynamically
+  await AdmobService.initialize();
 
   await Hive.initFlutter();
   await Hive.openBox('settings');
@@ -45,12 +66,23 @@ void main() async {
   await Hive.openBox('medical_stores_cache');
   await Hive.openBox('blocked_users');
   await Hive.openBox('flagged_users');
+  await Hive.openBox('supabase_commodity_images');
+  await Hive.openBox('khata_transactions');
 
   // Schedule Festival Notifications
   FestivalRepository.scheduleUpcomingFestivals();
 
   // Initialize Notifications
   await NotificationService.init();
+
+  // Background Sync Custom Commodity Images from Supabase
+  try {
+    CommodityUtils.syncCustomImagesFromSupabase();
+  } catch (_) {}
+  
+  // try {
+  //   MandiRepository().bulkTranslateCommodities();
+  // } catch (_) {}
 
   // Handle initial notification if app was closed
   final initialNotification = await NotificationService.getInitialNotification();
@@ -113,6 +145,9 @@ class _BharatFlowAppState extends ConsumerState<BharatFlowApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
+      navigatorObservers: [
+        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      ],
       title: 'BharatFlow',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -135,12 +170,17 @@ class SecurityWrapper extends ConsumerStatefulWidget {
 class _SecurityWrapperState extends ConsumerState<SecurityWrapper>
     with WidgetsBindingObserver {
   bool _isLocked = false;
+  bool _isAdBlockerActive = false;
   DateTime? _lastBackgroundTime;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Initial Ad Blocker check
+    _checkAdBlocker();
+
     final settings = ref.read(settingsProvider);
     if (settings.pinEnabled && settings.pinCode.isNotEmpty) {
       _isLocked = true;
@@ -153,8 +193,22 @@ class _SecurityWrapperState extends ConsumerState<SecurityWrapper>
     super.dispose();
   }
 
+  Future<void> _checkAdBlocker() async {
+    final active = await AdBlockerService.isAdBlockerOrPrivateDnsActive();
+    if (mounted) {
+      setState(() {
+        _isAdBlockerActive = active;
+      });
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Check ad blocker on app resume
+    if (state == AppLifecycleState.resumed) {
+      _checkAdBlocker();
+    }
+
     final settings = ref.read(settingsProvider);
     if (!settings.pinEnabled || settings.pinCode.isEmpty) return;
 
@@ -172,9 +226,18 @@ class _SecurityWrapperState extends ConsumerState<SecurityWrapper>
 
   @override
   Widget build(BuildContext context) {
+    if (_isAdBlockerActive) {
+      return AdBlockWarningScreen(
+        onAdBlockerDisabled: () => setState(() => _isAdBlockerActive = false),
+      );
+    }
     if (_isLocked) {
       return PinLockScreen(onUnlocked: () => setState(() => _isLocked = false));
     }
-    return widget.child;
+    return SafeArea(
+      top: false, // Keep top behavior unchanged
+      bottom: true, // Prevent cutoff at the bottom navigation bar
+      child: widget.child,
+    );
   }
 }

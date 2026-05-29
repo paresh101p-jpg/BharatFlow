@@ -1,0 +1,1 @@
+SELECT cron.schedule('sync-mandi-daily', '0 13 * * *', 'SELECT net.http_post(url:=''https://wkhelvyqudzyzbrayyqo.supabase.co/functions/v1/sync-mandi'', headers:=''{\"Content-Type\": \"application/json\"}''::jsonb, body:=''{}\''::jsonb)');

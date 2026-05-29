@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -170,11 +172,19 @@ class _WarehouseLocatorScreenState extends ConsumerState<WarehouseLocatorScreen>
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: filteredList.length + (_hasMore ? 1 : 1),
+                    itemCount: filteredList.length + (filteredList.length ~/ 5) + (_hasMore ? 1 : 1),
                     itemBuilder: (context, i) {
-                      if (i < filteredList.length) {
-                        return _WarehouseCard(
-                            warehouse: filteredList[i], t: t);
+                      final totalItemsAndAds = filteredList.length + (filteredList.length ~/ 5);
+                      if (i < totalItemsAndAds) {
+                        if (i > 0 && (i + 1) % 6 == 0) {
+                          return const DynamicAdmobCardWidget();
+                        }
+                        final dataIndex = i - (i ~/ 6);
+                        if (dataIndex < filteredList.length) {
+                          return _WarehouseCard(
+                              warehouse: filteredList[dataIndex], t: t);
+                        }
+                        return const SizedBox.shrink();
                       } else if (_hasMore) {
                         return const Center(
                             child: Padding(
@@ -203,7 +213,7 @@ class _WarehouseLocatorScreenState extends ConsumerState<WarehouseLocatorScreen>
         children: [
           const SizedBox(height: 5),
           Text(
-            '8,500+ Verified Warehouses in India',
+            t['warehouses'] != null ? '8,500+ ${t['warehouses']}' : '8,500+ Verified Warehouses in India',
             style: TextStyle(
                 fontSize: 11,
                 color: Colors.white.withOpacity(0.9),
@@ -273,9 +283,9 @@ class _WarehouseLocatorScreenState extends ConsumerState<WarehouseLocatorScreen>
                           fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 3),
-                    const Text(
-                      'NEARBY',
-                      style: TextStyle(
+                    Text(
+                      t['nearest_warehouses'] ?? 'NEARBY',
+                      style: const TextStyle(
                           fontSize: 7,
                           color: Colors.grey,
                           fontWeight: FontWeight.bold),
@@ -337,7 +347,7 @@ class _WarehouseLocatorScreenState extends ConsumerState<WarehouseLocatorScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Text(
-        'Source: WDRA, Government of India\nShowing All Registered Warehouses',
+        '${t['source'] ?? 'Source'}: WDRA, ${t['govt_approved'] ?? 'Government of India'}\n${t['warehouses'] ?? 'Showing All Registered Warehouses'}',
         style: TextStyle(
             fontSize: 10,
             color: Colors.grey.shade500,
@@ -358,6 +368,39 @@ class _WarehouseCard extends StatelessWidget {
   final Warehouse warehouse;
   final Map<String, String> t;
   const _WarehouseCard({required this.warehouse, required this.t});
+
+  void _shareWarehouse(BuildContext context, Warehouse warehouse) async {
+    try {
+      final name = warehouse.name;
+      final address = warehouse.address;
+      final capacity = warehouse.capacity;
+      final rent = '₹${warehouse.monthlyRentPerQuintal.toInt()}/Qtl';
+      final status = warehouse.isLive ? 'OPEN' : 'CLOSED';
+      
+      final query = Uri.encodeComponent('$name, $address');
+      final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=$query';
+
+      final buffer = StringBuffer();
+      buffer.writeln('🌾 *Verified Warehouse Details* 🌾');
+      buffer.writeln('🏢 *Name:* $name');
+      buffer.writeln('📍 *Location:* $address');
+      buffer.writeln('📦 *Capacity:* $capacity');
+      buffer.writeln('💰 *Est. Rent:* $rent');
+      buffer.writeln('📌 *Status:* $status');
+      buffer.writeln('\n🗺️ *Google Maps Navigation:*');
+      buffer.writeln(mapsUrl);
+      
+      buffer.writeln('\n📲 Find verified and govt warehouses near you on *BharatFlow app*!');
+      buffer.writeln('Download Now:\nhttps://play.google.com/store/apps/details?id=com.BharatFlow');
+
+      await Share.share(
+        buffer.toString(),
+        subject: 'Warehouse Location: $name',
+      );
+    } catch (e) {
+      debugPrint('Error sharing warehouse: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -430,6 +473,18 @@ class _WarehouseCard extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                               color: Colors.green.shade800)),
                     ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => _shareWarehouse(context, warehouse),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.share, size: 14, color: Colors.blue.shade800),
+                      ),
+                    ),
                     if (!warehouse.isLive)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
@@ -438,11 +493,11 @@ class _WarehouseCard extends StatelessWidget {
                         decoration: BoxDecoration(
                             color: Colors.red,
                             borderRadius: BorderRadius.circular(4)),
-                        child: const Text('PERMANENTLY CLOSED',
-                            style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
+                          child: Text(t['permanently_closed'] ?? 'PERMANENTLY CLOSED',
+                              style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
                       ),
                   ],
                 ),
@@ -458,14 +513,14 @@ class _WarehouseCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _statItem(
-                    Icons.storage_rounded, 'Capacity', warehouse.capacity),
-                _statItem(Icons.payments_rounded, 'Est. Rent',
-                    '₹${warehouse.monthlyRentPerQuintal.toInt()}/Qtl',
+                    Icons.storage_rounded, t['farm_area_label'] ?? 'Capacity', warehouse.capacity),
+                _statItem(Icons.payments_rounded, t['required_fund'] ?? 'Est. Rent',
+                    '₹${warehouse.monthlyRentPerQuintal.toInt()}/${t['per_quintal']?.trim().replaceAll('/', '') ?? 'Qtl'}',
                     color: Colors.blue.shade700),
                 _statItem(
                     warehouse.isLive ? Icons.check_circle : Icons.cancel,
-                    'Status',
-                    warehouse.isLive ? 'OPEN' : 'CLOSED',
+                    t['season'] ?? 'Status',
+                    warehouse.isLive ? (t['open_caps'] ?? 'OPEN') : (t['closed_caps'] ?? 'CLOSED'),
                     color: warehouse.isLive ? Colors.green : Colors.red),
               ],
             ),
@@ -573,12 +628,12 @@ class _WarehouseCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Farmer Activity:',
+              Text(t['farmer_activity'] ?? 'Farmer Activity:',
                   style: TextStyle(
                       fontSize: 9,
                       color: Colors.grey.shade600,
                       fontWeight: FontWeight.bold)),
-              Text('$total votes',
+              Text('$total ${t['votes'] ?? 'votes'}',
                   style: TextStyle(
                       fontSize: 9, color: Colors.grey.shade500)),
             ],
@@ -602,12 +657,12 @@ class _WarehouseCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$yesPerc% Full',
+              Text('$yesPerc% ${t['full_question'] ?? 'Full'}',
                   style: const TextStyle(
                       fontSize: 9,
                       color: Colors.red,
                       fontWeight: FontWeight.bold)),
-              Text('$noPerc% Available',
+              Text('$noPerc% ${t['open_caps'] ?? 'Available'}',
                   style: const TextStyle(
                       fontSize: 9,
                       color: Colors.green,
@@ -657,9 +712,9 @@ class _FeedbackSectionState extends ConsumerState<_FeedbackSection> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Full?',
+          Text(widget.t['full_question'] ?? 'Full?',
               style:
-                  TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
           const SizedBox(width: 8),
           _feedbackBtn(true),
           const SizedBox(width: 6),
@@ -685,7 +740,7 @@ class _FeedbackSectionState extends ConsumerState<_FeedbackSection> {
                 color: isSelected
                     ? (full ? Colors.red : Colors.green)
                     : Colors.grey.shade300)),
-        child: Text(full ? 'YES' : 'NO',
+        child: Text(full ? (widget.t['yes_word'] ?? 'YES') : (widget.t['no_word'] ?? 'NO'),
             style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.bold,

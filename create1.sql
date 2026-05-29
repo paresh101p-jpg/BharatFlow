@@ -1,0 +1,1 @@
+CREATE TRIGGER qa_notify AFTER INSERT ON public.helpline_questions FOR EACH ROW EXECUTE FUNCTION supabase_functions.http_request('https://wkhelvyqudzyzbrayyqo.supabase.co/functions/v1/question_approval', 'POST');

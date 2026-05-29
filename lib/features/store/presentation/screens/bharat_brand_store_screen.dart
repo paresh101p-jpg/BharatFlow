@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/general_providers.dart';
 import 'package:bharat_flow/features/profile/presentation/screens/profile_screen.dart';
+import 'package:bharat_flow/features/profile/data/repositories/profile_repository.dart';
 import 'package:bharat_flow/core/providers/auth_providers.dart';
 import 'package:bharat_flow/core/providers/settings_provider.dart';
 import 'package:bharat_flow/core/utils/language_helper.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'new_post_screen.dart';
 import 'my_post_screen.dart';
 import 'product_details_screen.dart';
@@ -49,7 +52,17 @@ class _BharatBrandStoreScreenState extends ConsumerState<BharatBrandStoreScreen>
     final productsAsync = ref.watch(tableDataProvider('store_products'));
     final t = ref.watch(translationsProvider);
     final googleUserAsync = ref.watch(googleUserProvider);
-    final photoUrl = googleUserAsync.when(data: (u) => u?.photoUrl, loading: () => null, error: (_, __) => null);
+    final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.value;
+    final googleUser = googleUserAsync.value;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final box = Hive.box('settings');
+
+    final String? photoUrl = profile?.avatarUrl ??
+        googleUser?.photoUrl ??
+        authUser?.userMetadata?['avatar_url'] ??
+        authUser?.userMetadata?['picture'] ??
+        box.get('userPhoto');
     
     // Get all commodities for autocomplete
     final productList = ref.watch(productListProvider).items;
@@ -325,25 +338,37 @@ class _BharatBrandStoreScreenState extends ConsumerState<BharatBrandStoreScreen>
         ),
         
         Expanded(
-          child: products.isEmpty 
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade300),
-                    const SizedBox(height: 16),
-                    Text(t['no_posts_available'] ?? 'No posts available', style: TextStyle(color: Colors.grey.shade600)),
-                  ],
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(tableDataProvider('store_products'));
+              await ref.read(tableDataProvider('store_products').future);
+            },
+            child: products.isEmpty 
+              ? SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        Text(t['no_posts_available'] ?? 'No posts available', style: TextStyle(color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16).copyWith(top: 0),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final p = products[index];
+                    return _productCard(context, p, t, isBuyer);
+                  },
                 ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16).copyWith(top: 0),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final p = products[index];
-                  return _productCard(context, p, t, isBuyer);
-                },
-              ),
+          ),
         ),
       ],
     );
@@ -412,6 +437,25 @@ class _BharatBrandStoreScreenState extends ConsumerState<BharatBrandStoreScreen>
                     ),
                   ),
                 ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: () => _shareProductDetails(p),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.share,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
             // Content Section
@@ -457,6 +501,21 @@ class _BharatBrandStoreScreenState extends ConsumerState<BharatBrandStoreScreen>
                                 );
                               },
                             ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200)
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.remove_red_eye_outlined, size: 14, color: Colors.grey.shade600),
+                            const SizedBox(width: 4),
+                            Text('${p['views_count'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -550,6 +609,49 @@ class _BharatBrandStoreScreenState extends ConsumerState<BharatBrandStoreScreen>
         ),
       );
     }
+  }
+
+  Future<void> _shareProductDetails(Map<String, dynamic> p) async {
+    final name = p['commodity'] ?? 'Agricultural Product';
+    final price = '₹${p['price']}';
+    final unit = p['unit'] ?? 'Unit';
+    final location = '${p['district'] ?? ''}, ${p['state'] ?? ''}';
+    final sellerName = p['user_name'] ?? 'Kisan User';
+    final userId = p['user_id'];
+    
+    String ratingText = 'New / No ratings yet';
+    if (userId != null) {
+      try {
+        final res = await Supabase.instance.client
+            .from('user_ratings')
+            .select()
+            .eq('target_user_id', userId);
+        final ratingsList = res as List<dynamic>;
+        if (ratingsList.isNotEmpty) {
+          double sum = 0;
+          for (var r in ratingsList) {
+            sum += (r['rating'] as num).toDouble();
+          }
+          final avg = sum / ratingsList.length;
+          ratingText = '${avg.toStringAsFixed(1)} ★ (${ratingsList.length} ratings)';
+        }
+      } catch (_) {
+        // Fallback
+      }
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln('🌾 *BharatFlow - Kisan Market Deal* 🌾\n');
+    buffer.writeln('📦 *Product:* $name');
+    buffer.writeln('💰 *Price:* $price / $unit');
+    buffer.writeln('📍 *Location:* $location');
+    buffer.writeln('👤 *Seller:* $sellerName');
+    buffer.writeln('⭐ *Seller Rating:* $ratingText\n');
+    
+    buffer.writeln('📲 Download *BharatFlow App* to connect with this seller & get best deals:');
+    buffer.writeln('https://play.google.com/store/apps/details?id=com.BharatFlow');
+
+    Share.share(buffer.toString(), subject: 'Check out this agricultural listing on BharatFlow');
   }
 }
 

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/providers/settings_provider.dart';
 import '../../../profile/presentation/screens/public_profile_screen.dart';
 import 'chat_screen.dart';
 
@@ -58,7 +59,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 ⭐ *Quality:* ${widget.product['quality'] ?? 'Good'}
 
 👉 Download *BharatFlow App* for more deals:
-https://play.google.com/store/apps/details?id=com.bharat_flow
+https://play.google.com/store/apps/details?id=com.BharatFlow
 ''';
     Share.share(text, subject: 'Check out this agricultural product on BharatFlow');
   }
@@ -75,6 +76,7 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(translationsProvider);
     final name = widget.product['commodity'] ?? 'Agricultural Product';
     final price = '₹${widget.product['price']}';
     final unit = '/ ${widget.product['unit'] ?? 'Unit'}';
@@ -207,11 +209,11 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildChip(
-                        type == 'SELL' ? 'FOR SALE' : 'BUY REQUEST', 
+                        type == 'SELL' ? (t['sell'] ?? 'FOR SALE') : (t['buy'] ?? 'BUY REQUEST'), 
                         type == 'SELL' ? Colors.green : Colors.blue
                       ),
                       if (widget.product['is_organic'] == true)
-                        _buildChip('ORGANIC', Colors.orange, icon: Icons.eco),
+                        _buildChip(t['organic'] ?? 'ORGANIC', Colors.orange, icon: Icons.eco),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -247,7 +249,7 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Expected Price', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                            Text(t['selling_price'] ?? 'Expected Price', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 2),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -270,21 +272,21 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                   ),
 
                   const SizedBox(height: 32),
-                  const Text('Specifications', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text(t['specs'] ?? 'Specifications', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _statusBadge('Processed', widget.product['is_processed'] == true, Colors.indigo),
-                      _statusBadge('Graded', widget.product['is_graded'] == true, Colors.teal),
-                      _statusBadge('Packed', widget.product['is_packed'] == true, Colors.brown),
-                      _statusBadge('AC Storage', widget.product['is_ac_stored'] == true, Colors.cyan),
+                      _statusBadge(t['processed'] ?? 'Processed', widget.product['is_processed'] == true, Colors.indigo),
+                      _statusBadge(t['graded'] ?? 'Graded', widget.product['is_graded'] == true, Colors.teal),
+                      _statusBadge(t['packed'] ?? 'Packed', widget.product['is_packed'] == true, Colors.brown),
+                      _statusBadge(t['ac_storage'] ?? 'AC Storage', widget.product['is_ac_stored'] == true, Colors.cyan),
                     ],
                   ),
 
                   const SizedBox(height: 40),
-                  const Text('Description', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text(t['description'] ?? 'Description', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -300,7 +302,7 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                   ),
 
                   const SizedBox(height: 40),
-                  const Text('Additional Information', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text(t['additional_info'] ?? 'Additional Information', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   const SizedBox(height: 20),
                   
                   // Premium Info Grid
@@ -312,12 +314,12 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                     crossAxisSpacing: 16,
                     childAspectRatio: 1.6,
                     children: [
-                      _infoCard(Icons.person_rounded, 'Seller Name', widget.product['user_name'] ?? 'Kisan User', Colors.blue),
-                      _infoCard(Icons.inventory_2_rounded, 'Quantity', widget.product['quantity'] ?? 'N/A', Colors.purple),
-                      _infoCard(Icons.star_rounded, 'Quality', widget.product['quality'] ?? 'Good', Colors.amber),
-                      _infoCard(Icons.translate_rounded, 'Language', widget.product['language'] ?? 'Hindi', Colors.orange),
-                      _infoCard(Icons.calendar_today_rounded, 'Posted', DateFormat('dd MMM').format(DateTime.tryParse(widget.product['created_at'] ?? '') ?? DateTime.now()), Colors.teal),
-                      _infoCard(Icons.timer_rounded, 'Expiry', endDate != null ? DateFormat('dd MMM').format(endDate) : 'N/A', Colors.red),
+                      _infoCard(Icons.person_rounded, t['seller_name'] ?? 'Seller Name', widget.product['user_name'] ?? 'Kisan User', Colors.blue),
+                      _infoCard(Icons.inventory_2_rounded, t['items'] ?? 'Quantity', widget.product['quantity'] ?? 'N/A', Colors.purple),
+                      _infoCard(Icons.star_rounded, t['quality'] ?? 'Quality', widget.product['quality'] ?? 'Good', Colors.amber),
+                      _infoCard(Icons.translate_rounded, t['language'] ?? 'Language', widget.product['language'] ?? 'Hindi', Colors.orange),
+                      _infoCard(Icons.calendar_today_rounded, t['posted'] ?? 'Posted', DateFormat('dd MMM').format(DateTime.tryParse(widget.product['created_at'] ?? '') ?? DateTime.now()), Colors.teal),
+                      _infoCard(Icons.timer_rounded, t['expiry'] ?? 'Expiry', endDate != null ? DateFormat('dd MMM').format(endDate) : 'N/A', Colors.red),
                     ],
                   ),
                   
@@ -408,6 +410,7 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
   }
 
   Widget _buildBottomActions(BuildContext context) {
+    final t = ref.read(translationsProvider);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -424,11 +427,11 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                   if (phone != null && phone.toString().isNotEmpty) {
                     launchUrl(Uri.parse('tel:$phone'));
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone number not available')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t['phone_not_available'] ?? 'Phone number not available')));
                   }
                 },
                 icon: const Icon(Icons.call_rounded, size: 20),
-                label: const Text('Call'),
+                label: Text(t['call'] ?? 'Call'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green.shade600,
                   foregroundColor: Colors.white,
@@ -449,11 +452,11 @@ https://play.google.com/store/apps/details?id=com.bharat_flow
                       receiverName: widget.product['user_name'] ?? 'Kisan User',
                     )));
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot chat: User ID missing')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t['cannot_chat'] ?? 'Cannot chat: User ID missing')));
                   }
                 },
                 icon: const Icon(Icons.chat_bubble_rounded, size: 20),
-                label: const Text('Message'),
+                label: Text(t['message'] ?? 'Message'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
                   foregroundColor: Colors.white,

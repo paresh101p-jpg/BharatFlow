@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:bharat_flow/features/mandi/data/repositories/mandi_repository.dart';
 import 'package:bharat_flow/core/providers/location_provider.dart';
 import 'package:bharat_flow/core/providers/general_providers.dart';
+import 'package:bharat_flow/core/providers/settings_provider.dart';
 import 'package:bharat_flow/core/utils/language_helper.dart';
 
 // ─── FILTERS ─────────────────────────────────────────────────────────────────
@@ -33,7 +34,8 @@ final mandiFilterProvider =
 final mandiTabCategoryProvider = StateProvider<String>((ref) => 'All');
 final mandiTabInitialIndexProvider = StateProvider<int>((ref) => 0);
 final mandiStandaloneModeProvider = StateProvider<String?>((ref) => null);
-final homeTabModeProvider = StateProvider<String>((ref) => 'home'); // 'home' or 'mandi'
+final homeTabModeProvider =
+    StateProvider<String>((ref) => 'home'); // 'home' or 'mandi'
 final priceUnitProvider = StateProvider<String>((ref) => 'Quintal');
 
 // ─── MANDI LIST STATE ─────────────────────────────────────────────────────────
@@ -73,10 +75,10 @@ class MandiPricesNotifier extends StateNotifier<MandiPricesState> {
 
   MandiPricesNotifier(this._repo, this._ref, [this._currentLocation])
       : super(const MandiPricesState(items: [])) {
-    
     // Auto-reload when location is first acquired
     _ref.listen<UserLocation>(locationProvider, (prev, next) {
-      if (_currentLocation == null || _currentLocation!.address != next.address) {
+      if (_currentLocation == null ||
+          _currentLocation!.address != next.address) {
         _currentLocation = next;
         loadInitial(searchQuery: _lastQuery);
       }
@@ -86,22 +88,24 @@ class MandiPricesNotifier extends StateNotifier<MandiPricesState> {
 
     // AUTOMATIC BACKGROUND SYNC: No manual refresh needed
     Future.delayed(const Duration(seconds: 3), () async {
-  if (!mounted) return;
-  try {
-    final loc = _ref.read(locationProvider);
-    await _repo.performSilentLocalSync(userState: loc.state, userCity: loc.city);
-    if (mounted) {
-      await loadInitial(searchQuery: _lastQuery);
-    }
-  } catch (e) {
-    print('❌ Background sync error: $e');
-  }
-});
+      if (!mounted) return;
+      try {
+        final loc = _ref.read(locationProvider);
+        await _repo.performSilentLocalSync(
+            userState: loc.state, userCity: loc.city);
+        if (mounted) {
+          await loadInitial(searchQuery: _lastQuery);
+        }
+      } catch (e) {
+        print('❌ Background sync error: $e');
+      }
+    });
   }
 
   Future<void> loadInitial({String searchQuery = ''}) async {
     _lastQuery = searchQuery;
-    final UserLocation location = _currentLocation ?? _ref.read(locationProvider);
+    final UserLocation location =
+        _currentLocation ?? _ref.read(locationProvider);
 
     final int currentSearchId = ++_searchCounter;
 
@@ -136,7 +140,8 @@ class MandiPricesNotifier extends StateNotifier<MandiPricesState> {
     state = state.copyWith(isLoading: true);
 
     final nextPage = state.items.length ~/ 50;
-    final UserLocation location = _currentLocation ?? _ref.read(locationProvider);
+    final UserLocation location =
+        _currentLocation ?? _ref.read(locationProvider);
 
     final newData = await _repo.fetchMandis(
       page: nextPage,
@@ -163,7 +168,8 @@ class MandiPricesNotifier extends StateNotifier<MandiPricesState> {
   }
 
   Future<void> _preFetchNext(int page) async {
-    final UserLocation location = _currentLocation ?? _ref.read(locationProvider);
+    final UserLocation location =
+        _currentLocation ?? _ref.read(locationProvider);
     final newData = await _repo.fetchMandis(
       page: page,
       searchQuery: _lastQuery,
@@ -172,13 +178,16 @@ class MandiPricesNotifier extends StateNotifier<MandiPricesState> {
       userState: location.state,
       userCity: location.city,
     );
-    
+
     if (!mounted || newData.isEmpty) return;
-    
+
     // Append silently if user hasn't scrolled more yet
-    final currentNames = state.items.map((e) => e['mandi_name_original']).toSet();
-    final uniqueNew = newData.where((e) => !currentNames.contains(e['mandi_name_original'])).toList();
-    
+    final currentNames =
+        state.items.map((e) => e['mandi_name_original']).toSet();
+    final uniqueNew = newData
+        .where((e) => !currentNames.contains(e['mandi_name_original']))
+        .toList();
+
     if (uniqueNew.isNotEmpty) {
       state = state.copyWith(items: [...state.items, ...uniqueNew]);
     }
@@ -195,7 +204,6 @@ final mandiPricesProvider =
   final location = ref.watch(locationProvider);
   return MandiPricesNotifier(repo, ref, location);
 });
-
 
 // ─── FAVORITES ─────────────────────────────────────────────────────────────
 
@@ -224,26 +232,29 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
 final userLocationNameProvider = FutureProvider<String>((ref) async {
   final posAsync = ref.watch(userLocationProvider);
   final pos = posAsync.valueOrNull;
-  
+
   if (pos == null) return "Locating...";
-  
+
   try {
-    final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+    final placemarks =
+        await placemarkFromCoordinates(pos.latitude, pos.longitude);
     if (placemarks.isNotEmpty) {
       final p = placemarks.first;
       final city = p.locality ?? p.subAdministrativeArea ?? 'Unknown';
       final state = p.administrativeArea ?? 'India';
-      
+
       // Live Location Language Translation
       return await LanguageHelper.translate(city, state, city);
     }
   } catch (e) {
-    return await LanguageHelper.translate("Surat", "Gujarat", "Surat"); // Fallback translated
+    return await LanguageHelper.translate(
+        "Surat", "Gujarat", "Surat"); // Fallback translated
   }
   return "Unknown";
 });
 
-final favoritesProvider = StateNotifierProvider<FavoritesNotifier, Set<String>>((ref) {
+final favoritesProvider =
+    StateNotifierProvider<FavoritesNotifier, Set<String>>((ref) {
   final repo = ref.watch(mandiRepositoryProvider);
   return FavoritesNotifier(repo);
 });
@@ -252,12 +263,10 @@ final favoritesProvider = StateNotifierProvider<FavoritesNotifier, Set<String>>(
 
 final mandiProductsProvider =
     FutureProvider.family<List<Map<String, dynamic>>, String>((ref, name) {
+  ref.watch(translationsProvider); // Auto-re-evaluates on language changes!
   final location = ref.watch(locationProvider);
-  return ref.watch(mandiRepositoryProvider).fetchMandiProducts(
-    name, 
-    userState: location.state, 
-    userCity: location.city
-  );
+  return ref.watch(mandiRepositoryProvider).fetchMandiProducts(name,
+      userState: location.state, userCity: location.city);
 });
 
 final userLocationProvider = FutureProvider<Position?>((ref) async {
@@ -280,8 +289,7 @@ final userLocationProvider = FutureProvider<Position?>((ref) async {
   }
 });
 
-final nearestMandiProvider =
-    FutureProvider<Map<String, dynamic>?>((ref) async {
+final nearestMandiProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
   final location = ref.watch(locationProvider);
   return ref.read(mandiRepositoryProvider).fetchNearestMandi(
         location.latitude,
@@ -291,10 +299,14 @@ final nearestMandiProvider =
 
 // --- REAL BUSINESS INFO PROVIDER (Timings + Phone) ---------------------------
 
-final mandiBusinessInfoProvider = FutureProvider.family<Map<String, String>?, Map<String, String>>((ref, params) async {
+final mandiBusinessInfoProvider =
+    FutureProvider.family<Map<String, String>?, Map<String, String>>(
+        (ref, params) async {
   final name = params['name'] ?? '';
   final district = params['district'] ?? '';
-  return ref.read(mandiRepositoryProvider).fetchMandiBusinessInfo(name, district);
+  return ref
+      .read(mandiRepositoryProvider)
+      .fetchMandiBusinessInfo(name, district);
 });
 
 // ─── PRODUCT LIST NOTIFIER ───────────────────────────────────────────────────
@@ -335,16 +347,17 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   int _searchCounter = 0;
   int _currentPage = 0;
 
-  ProductListNotifier(this._repo, this._ref) : super(const ProductListState(items: [])) {
+  ProductListNotifier(this._repo, this._ref)
+      : super(const ProductListState(items: [])) {
     loadInitial();
   }
 
   Future<void> loadInitial({String searchQuery = '', String? category}) async {
     _lastQuery = searchQuery;
     state = state.copyWith(
-      isLoading: true, 
-      items: [], 
-      hasMore: false, 
+      isLoading: true,
+      items: [],
+      hasMore: false,
       category: category,
       resetCategory: category == null,
     );
@@ -397,7 +410,9 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
     if (!mounted) return;
 
     // Strict de-duplication against current items
-    final currentNames = state.items.map((e) => e['commodity_name_original'] ?? e['commodity_name']).toSet();
+    final currentNames = state.items
+        .map((e) => e['commodity_name_original'] ?? e['commodity_name'])
+        .toSet();
     final uniqueNew = newData.where((e) {
       final name = e['commodity_name_original'] ?? e['commodity_name'];
       return !currentNames.contains(name);
@@ -423,12 +438,15 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
       userState: location.state,
       userCity: location.city,
     );
-    
+
     if (!mounted || newData.isEmpty) return;
-    
-    final currentNames = state.items.map((e) => e['commodity_name_original']).toSet();
-    final uniqueNew = newData.where((e) => !currentNames.contains(e['commodity_name_original'])).toList();
-    
+
+    final currentNames =
+        state.items.map((e) => e['commodity_name_original']).toSet();
+    final uniqueNew = newData
+        .where((e) => !currentNames.contains(e['commodity_name_original']))
+        .toList();
+
     if (uniqueNew.isNotEmpty) {
       state = state.copyWith(items: [...state.items, ...uniqueNew]);
     }
@@ -449,23 +467,22 @@ final productListProvider =
   return ProductListNotifier(repo, ref);
 });
 
-
-
-final productComparisonProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, arg) {
+final productComparisonProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, arg) {
   // arg is "commodity:sortMode:originalCommodity"
   final parts = arg.split(':');
   final commodity = parts[0];
   final sortMode = parts.length > 1 ? parts[1] : 'latest';
   final originalCommodity = parts.length > 2 ? parts[2] : commodity;
-  
+
   final location = ref.watch(locationProvider);
-  
+
   return ref.read(mandiRepositoryProvider).fetchProductComparison(
-    originalCommodity,
-    location.latitude,
-    location.longitude,
-    sortMode: sortMode,
-  );
+        originalCommodity,
+        location.latitude,
+        location.longitude,
+        sortMode: sortMode,
+      );
 });
 
 class ProductFavoritesNotifier extends StateNotifier<Set<String>> {
@@ -523,30 +540,32 @@ class PriceAlert {
   });
 
   Map<String, dynamic> toMap() => {
-    'commodity': commodity,
-    'commodityGuj': commodityGuj,
-    'mandiName': mandiName,
-    'mandiNameGuj': mandiNameGuj,
-    'targetPrice': targetPrice,
-    'isAbove': isAbove,
-    'currentPrice': currentPrice,
-    'isHit': isHit,
-    'lastUpdated': lastUpdated?.toIso8601String(),
-    'arrivalDate': arrivalDate,
-  };
+        'commodity': commodity,
+        'commodityGuj': commodityGuj,
+        'mandiName': mandiName,
+        'mandiNameGuj': mandiNameGuj,
+        'targetPrice': targetPrice,
+        'isAbove': isAbove,
+        'currentPrice': currentPrice,
+        'isHit': isHit,
+        'lastUpdated': lastUpdated?.toIso8601String(),
+        'arrivalDate': arrivalDate,
+      };
 
   factory PriceAlert.fromMap(Map<String, dynamic> map) => PriceAlert(
-    commodity: map['commodity'],
-    commodityGuj: map['commodityGuj'],
-    mandiName: map['mandiName'],
-    mandiNameGuj: map['mandiNameGuj'],
-    targetPrice: (map['targetPrice'] as num).toDouble(),
-    isAbove: map['isAbove'],
-    currentPrice: (map['currentPrice'] as num).toDouble(),
-    isHit: map['isHit'] ?? false,
-    lastUpdated: map['lastUpdated'] != null ? DateTime.parse(map['lastUpdated']) : null,
-    arrivalDate: map['arrivalDate'],
-  );
+        commodity: map['commodity'],
+        commodityGuj: map['commodityGuj'],
+        mandiName: map['mandiName'],
+        mandiNameGuj: map['mandiNameGuj'],
+        targetPrice: (map['targetPrice'] as num).toDouble(),
+        isAbove: map['isAbove'],
+        currentPrice: (map['currentPrice'] as num).toDouble(),
+        isHit: map['isHit'] ?? false,
+        lastUpdated: map['lastUpdated'] != null
+            ? DateTime.parse(map['lastUpdated'])
+            : null,
+        arrivalDate: map['arrivalDate'],
+      );
 }
 
 class PriceAlertsNotifier extends StateNotifier<List<PriceAlert>> {
@@ -565,7 +584,7 @@ class PriceAlertsNotifier extends StateNotifier<List<PriceAlert>> {
 
   Future<void> refreshAlertPrices() async {
     if (state.isEmpty) return;
-    
+
     final loc = _ref.read(locationProvider);
     List<PriceAlert> updatedList = [];
     bool changed = false;
@@ -588,10 +607,14 @@ class PriceAlertsNotifier extends StateNotifier<List<PriceAlert>> {
             marketTime = '${marketTime.split('T')[0]}T${syncAt.split('T')[1]}';
           }
         }
-        
-        bool hit = alert.isAbove ? current >= alert.targetPrice : current <= alert.targetPrice;
-        
-        if (current != alert.currentPrice || hit != alert.isHit || (marketTime.isNotEmpty && marketTime != alert.arrivalDate)) {
+
+        bool hit = alert.isAbove
+            ? current >= alert.targetPrice
+            : current <= alert.targetPrice;
+
+        if (current != alert.currentPrice ||
+            hit != alert.isHit ||
+            (marketTime.isNotEmpty && marketTime != alert.arrivalDate)) {
           changed = true;
           if (hit && !alert.isHit) {
             _ref.read(hasUnreadNotificationsProvider.notifier).state = true;
@@ -638,34 +661,38 @@ class PriceAlertsNotifier extends StateNotifier<List<PriceAlert>> {
   }
 }
 
-final priceAlertsProvider = StateNotifierProvider<PriceAlertsNotifier, List<PriceAlert>>((ref) {
+final priceAlertsProvider =
+    StateNotifierProvider<PriceAlertsNotifier, List<PriceAlert>>((ref) {
   final repo = ref.watch(mandiRepositoryProvider);
   return PriceAlertsNotifier(repo, ref);
 });
 
 // ─── ALL UNIQUE COMMODITIES PROVIDER ────────────────────────────────────────
 
-final mandiProductHistoryProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, key) {
+final mandiProductHistoryProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, key) {
   final repo = ref.watch(mandiRepositoryProvider);
   final parts = key.split('|');
   if (parts.length < 3) return Future.value([]);
-  
+
   final mandiName = parts[0];
   final commodityName = parts[1];
   final months = int.tryParse(parts[2]) ?? 3;
-  
+
   return repo.fetchPriceHistory(mandiName, commodityName, months: months);
 });
 
 final allCommodityNamesProvider = FutureProvider<List<String>>((ref) async {
-  final mandiCrops = await ref.watch(mandiRepositoryProvider).fetchAllCommodityNames();
-  
+  final mandiCrops =
+      await ref.watch(mandiRepositoryProvider).fetchAllCommodityNames();
+
   // Also load from Master Dataset
   try {
-    final jsonStr = await rootBundle.loadString('assets/data/india_crop_calendar_master.json');
+    final jsonStr = await rootBundle
+        .loadString('assets/data/india_crop_calendar_master.json');
     final List<dynamic> data = json.decode(jsonStr);
     final masterCrops = data.map((e) => e['Crop'] as String).toSet().toList();
-    
+
     final combined = {...mandiCrops, ...masterCrops}.toList();
     combined.sort();
     return combined;

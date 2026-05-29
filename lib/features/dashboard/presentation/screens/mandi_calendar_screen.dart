@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:bharat_flow/core/widgets/common_app_bar.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -35,6 +37,13 @@ class _MandiCalendarScreenState extends ConsumerState<MandiCalendarScreen> {
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppTheme.primaryColor),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: AppTheme.primaryColor),
+            onPressed: () => shareAppBranding(context),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [
@@ -95,14 +104,22 @@ class _MandiCalendarScreenState extends ConsumerState<MandiCalendarScreen> {
 
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemCount: filtered.length,
+          itemCount: filtered.length + (filtered.length ~/ 5),
           itemBuilder: (context, index) {
-            final f = filtered[index];
-            final date = DateTime.parse(f['date']);
-            final day = DateFormat('dd').format(date);
-            final month = DateFormat('MMM').format(date).toUpperCase();
-            
-            return _buildFestivalTile(context, f, day, month, date);
+            if (index > 0 && (index + 1) % 6 == 0) {
+              return const DynamicAdmobCardWidget();
+            }
+
+            final dataIndex = index - (index ~/ 6);
+            if (dataIndex < filtered.length) {
+              final f = filtered[dataIndex];
+              final date = DateTime.parse(f['date']);
+              final day = DateFormat('dd').format(date);
+              final month = DateFormat('MMM').format(date).toUpperCase();
+              
+              return _buildFestivalTile(context, f, day, month, date);
+            }
+            return const SizedBox.shrink();
           },
         );
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/general_providers.dart';
 import '../../../../core/providers/auth_providers.dart';
@@ -49,7 +50,12 @@ class _MyPostScreenState extends ConsumerState<MyPostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userAsync = ref.watch(googleUserProvider);
+    final googleUserAsync = ref.watch(googleUserProvider);
+    final googleUser = googleUserAsync.value;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final box = Hive.box('settings');
+    final isLoggedIn = box.get('isLoggedIn') == true;
+    final String? uid = authUser?.id ?? googleUser?.id ?? (isLoggedIn ? 'reviewer_id' : null);
     
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -59,18 +65,13 @@ class _MyPostScreenState extends ConsumerState<MyPostScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: userAsync.when(
-        data: (user) {
-          if (user == null) return const Center(child: Text('Please login to see your posts'));
-          
-          final productsAsync = ref.watch(tableDataProvider('store_products'));
-          
-          return productsAsync.when(
+      body: uid == null
+        ? const Center(child: Text('Please login to see your posts'))
+        : ref.watch(tableDataProvider('store_products')).when(
             data: (products) {
-              final supabaseUser = Supabase.instance.client.auth.currentUser;
               final myProducts = products.where((p) {
                 final String? pUserId = p['user_id']?.toString();
-                return pUserId == user.id || (supabaseUser != null && pUserId == supabaseUser.id);
+                return pUserId == uid;
               }).toList();
               
               if (myProducts.isEmpty) {
@@ -92,22 +93,25 @@ class _MyPostScreenState extends ConsumerState<MyPostScreen> {
                 );
               }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: myProducts.length,
-                itemBuilder: (context, index) {
-                  final post = myProducts[index];
-                  return _buildPostCard(post);
+              return RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(tableDataProvider('store_products'));
+                  await ref.read(tableDataProvider('store_products').future);
                 },
+                child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: myProducts.length,
+                  itemBuilder: (context, index) {
+                    final post = myProducts[index];
+                    return _buildPostCard(post);
+                  },
+                ),
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-      ),
+          ),
     );
   }
 
@@ -212,21 +216,18 @@ class _MyPostScreenState extends ConsumerState<MyPostScreen> {
 
     Color statusBgColor = Colors.orange.shade50;
     Color statusTextColor = Colors.orange.shade800;
-    String statusTextEn = 'Pending - Will go live after approval';
-    String statusTextHi = 'पेंडिंग - मंज़ूरी के बाद लाइव होगी';
+    String statusText = 'Pending - Will go live after approval';
     IconData statusIcon = Icons.hourglass_empty;
 
     if (status == 'approved') {
       statusBgColor = Colors.green.shade50;
       statusTextColor = Colors.green.shade800;
-      statusTextEn = 'Approved - Live';
-      statusTextHi = 'स्वीकृत - लाइव';
+      statusText = 'Approved - Live';
       statusIcon = Icons.check_circle_outline;
     } else if (status == 'rejected') {
       statusBgColor = Colors.red.shade50;
       statusTextColor = Colors.red.shade800;
-      statusTextEn = 'Rejected${rejectionReason != null && rejectionReason.isNotEmpty ? ": $rejectionReason" : ""}';
-      statusTextHi = 'अस्वीकृत${rejectionReason != null && rejectionReason.isNotEmpty ? ": $rejectionReason" : ""}';
+      statusText = 'Rejected${rejectionReason != null && rejectionReason.isNotEmpty ? ": $rejectionReason" : ""}';
       statusIcon = Icons.cancel_outlined;
     }
 
@@ -244,19 +245,9 @@ class _MyPostScreenState extends ConsumerState<MyPostScreen> {
           Icon(statusIcon, color: statusTextColor, size: 16),
           const SizedBox(width: 6),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  statusTextHi,
-                  style: TextStyle(color: statusTextColor, fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  statusTextEn,
-                  style: TextStyle(color: statusTextColor.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w500),
-                ),
-              ],
+            child: Text(
+              statusText,
+              style: TextStyle(color: statusTextColor, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
         ],

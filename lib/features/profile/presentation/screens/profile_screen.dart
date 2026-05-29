@@ -11,6 +11,8 @@ import 'package:bharat_flow/features/profile/presentation/screens/public_profile
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:bharat_flow/core/providers/auth_providers.dart';
 import 'dart:ui';
+import 'package:bharat_flow/core/providers/settings_provider.dart';
+import 'package:bharat_flow/features/mandi/presentation/providers/mandi_providers.dart';
 
 import 'package:intl/intl.dart';
 import 'package:bharat_flow/core/widgets/common_app_bar.dart';
@@ -43,7 +45,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final session = auth.currentSession;
 
     if (session == null) {
-      debugPrint('_proactiveSessionCheck: No session found, ensuring session...');
+      debugPrint(
+          '_proactiveSessionCheck: No session found, ensuring session...');
       await _ensureSession();
       return;
     }
@@ -66,11 +69,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  String _getMemberSinceText(DateTime? createdAt) {
+  String _getMemberSinceText(DateTime? createdAt, Map<String, String> t) {
     final dateToUse = createdAt ?? DateTime.now();
     final formattedDate = DateFormat('EEEE, d MMM yyyy').format(dateToUse);
     final days = DateTime.now().difference(dateToUse).inDays;
-    return '$formattedDate • $days Days Old';
+    final String daysOldSuffix = t['days_old'] ?? 'Days Old';
+    return '$formattedDate • $days $daysOldSuffix';
   }
 
   // ─── FIX 1: Improved _ensureSession with Supabase refresh + redirect ────
@@ -149,17 +153,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
     final googleUserAsync = ref.watch(googleUserProvider);
+    final t = ref.watch(translationsProvider);
     final googleUser = googleUserAsync.value;
-
-    final String name = googleUser?.displayName ?? 'Bharat User';
-    final String email = googleUser?.email ?? 'Account Email';
-    final String? photoUrl = googleUser?.photoUrl;
-
+    final profile = profileAsync.value;
     final authUser = Supabase.instance.client.auth.currentUser;
+    final box = Hive.box('settings');
+
+    final String name = profile?.fullName ?? 
+        googleUser?.displayName ?? 
+        authUser?.userMetadata?['full_name'] ?? 
+        authUser?.userMetadata?['name'] ?? 
+        box.get('userName') ?? 
+        'Bharat User';
+
+    final String email = profile?.email ?? 
+        googleUser?.email ?? 
+        authUser?.email ?? 
+        box.get('userEmail') ?? 
+        'Account Email';
+
+    final String? photoUrl = profile?.avatarUrl ?? 
+        googleUser?.photoUrl ?? 
+        authUser?.userMetadata?['avatar_url'] ?? 
+        authUser?.userMetadata?['picture'] ?? 
+        box.get('userPhoto');
+
     final DateTime? authCreatedAt = authUser?.createdAt != null
         ? DateTime.parse(authUser!.createdAt)
         : null;
-    final DateTime? profileCreatedAt = profileAsync.value?.createdAt;
+    final DateTime? profileCreatedAt = profile?.createdAt;
 
     DateTime? effectiveCreatedAt = profileCreatedAt;
     if (authCreatedAt != null) {
@@ -195,19 +217,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         profileAsync.when(
                           data: (_) => _buildPremiumProfileCard(
                               name,
-                              _getMemberSinceText(effectiveCreatedAt),
-                              photoUrl),
+                              _getMemberSinceText(effectiveCreatedAt, t),
+                              photoUrl,
+                              t),
                           loading: () => _buildPremiumProfileCard(
-                              name, 'Loading...', photoUrl),
+                              name, t['loading'] ?? 'Loading...', photoUrl, t),
                           error: (_, __) => _buildPremiumProfileCard(
                               name,
-                              _getMemberSinceText(effectiveCreatedAt),
-                              photoUrl),
+                              _getMemberSinceText(effectiveCreatedAt, t),
+                              photoUrl,
+                              t),
                         ),
                         const SizedBox(height: 30),
                         profileAsync.when(
                           data: (profile) =>
-                              _buildModernSettingsList(profile, email),
+                              _buildModernSettingsList(profile, email, t),
                           loading: () => const Center(
                             child: Padding(
                               padding: EdgeInsets.all(40),
@@ -269,7 +293,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildPremiumProfileCard(
-      String name, String subText, String? photoUrl) {
+      String name, String subText, String? photoUrl, Map<String, String> t) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -295,11 +319,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: CircleAvatar(
               radius: 50,
               backgroundColor: Colors.white,
-              backgroundImage:
-                  photoUrl != null ? NetworkImage(photoUrl) : null,
+              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
               child: photoUrl == null
-                  ? const Icon(Icons.person,
-                      size: 50, color: Color(0xFF1976D2))
+                  ? const Icon(Icons.person, size: 50, color: Color(0xFF1976D2))
                   : null,
             ),
           ),
@@ -322,25 +344,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               final authUser = Supabase.instance.client.auth.currentUser;
               if (authUser != null) {
                 Navigator.push(
-                  context, 
-                  MaterialPageRoute(
-                    builder: (_) => PublicProfileScreen(
-                      userId: authUser.id,
-                      userName: name,
-                      userAvatar: photoUrl,
-                    )
-                  )
-                );
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => PublicProfileScreen(
+                              userId: authUser.id,
+                              userName: name,
+                              userAvatar: photoUrl,
+                            )));
               }
             },
             icon: const Icon(Icons.remove_red_eye, size: 18),
-            label: const Text('View my Profile'),
+            label: Text(t['view_profile'] ?? 'View my Profile'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1976D2),
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
             ),
           ),
         ],
@@ -348,14 +369,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildModernSettingsList(UserProfile? profile, String currentEmail) {
+  Widget _buildModernSettingsList(UserProfile? profile, String currentEmail, Map<String, String> t) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 10, bottom: 15),
-          child: Text('PERSONAL INFORMATION',
-              style: TextStyle(
+        Padding(
+          padding: const EdgeInsets.only(left: 10, bottom: 15),
+          child: Text(t['personal_info']?.toUpperCase() ?? 'PERSONAL INFORMATION',
+              style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   color: Colors.grey,
@@ -376,50 +397,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               _modernItem(
                   icon: Icons.email_rounded,
-                  title: 'Account Email',
+                  title: t['account_email'] ?? 'Account Email',
                   value: currentEmail,
                   color: Colors.blueGrey,
                   onTap: null),
               _divider(),
               _modernItem(
                   icon: Icons.phone_android_rounded,
-                  title: 'Mobile Number',
-                  value: profile?.mobileNo ?? 'Not set',
+                  title: t['mobile_number'] ?? 'Mobile Number',
+                  value: profile?.mobileNo != null && profile!.mobileNo!.isNotEmpty
+                      ? profile.mobileNo!
+                      : (t['not_set'] ?? 'Not set'),
                   color: Colors.orange,
-                  onTap: () => _editField('mobile_no', 'Mobile Number',
-                      Icons.phone, currentEmail)),
+                  onTap: () => _editField(
+                      'mobile_no', t['mobile_number'] ?? 'Mobile Number', Icons.phone, currentEmail)),
               _divider(),
               _modernItem(
                   icon: Icons.cake_rounded,
-                  title: 'Birthdate',
+                  title: t['birthday_label'] ?? 'Birthdate',
                   value: profile?.birthday != null
                       ? AppDateFormatter.format(profile!.birthday!)
-                      : 'Not set',
+                      : (t['not_set'] ?? 'Not set'),
                   color: Colors.pink,
                   onTap: () => _editBirthday(profile, currentEmail)),
               _divider(),
               _modernItem(
                   icon: Icons.location_city_rounded,
-                  title: 'City',
-                  value: profile?.city ?? 'Not set',
+                  title: t['city'] ?? 'City',
+                  value: profile?.city != null && profile!.city!.isNotEmpty
+                      ? profile.city!
+                      : (t['not_set'] ?? 'Not set'),
                   color: Colors.teal,
                   onTap: () => _editField(
-                      'city', 'City', Icons.location_city, currentEmail)),
+                      'city', t['city'] ?? 'City', Icons.location_city, currentEmail)),
               _divider(),
               _modernItem(
                   icon: Icons.home_rounded,
-                  title: 'Full Address',
-                  value: profile?.fullAddress ?? 'Not set',
+                  title: t['full_address'] ?? 'Full Address',
+                  value: profile?.fullAddress != null && profile!.fullAddress!.isNotEmpty
+                      ? profile.fullAddress!
+                      : (t['not_set'] ?? 'Not set'),
                   color: Colors.indigo,
                   onTap: () => _editAddress(profile, currentEmail)),
+              _divider(),
+              _modernItem(
+                  icon: Icons.language_rounded,
+                  title: t['app_language'] ?? 'App Language',
+                  value: ref.watch(settingsProvider).language,
+                  color: Colors.blue,
+                  onTap: () => _showLanguageSelectionDialog()),
             ],
           ),
         ),
         const SizedBox(height: 30),
-        const Padding(
-          padding: EdgeInsets.only(left: 10, bottom: 15),
-          child: Text('SUPPORT & HELP',
-              style: TextStyle(
+        Padding(
+          padding: const EdgeInsets.only(left: 10, bottom: 15),
+          child: Text(t['support_help']?.toUpperCase() ?? 'SUPPORT & HELP',
+              style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   color: Colors.grey,
@@ -440,7 +474,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               _modernItem(
                   icon: Icons.help_center_rounded,
-                  title: 'Help Center',
+                  title: t['help_center'] ?? 'Help Center',
                   value: 'Get assistance',
                   color: Colors.purple,
                   onTap: () => Navigator.push(
@@ -450,7 +484,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _divider(),
               _modernItem(
                   icon: Icons.privacy_tip_rounded,
-                  title: 'Privacy Policy',
+                  title: t['privacy_policy'] ?? 'Privacy Policy',
                   value: 'Data & Security',
                   color: Colors.green,
                   onTap: () => Navigator.push(
@@ -460,7 +494,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _divider(),
               _modernItem(
                   icon: Icons.info_rounded,
-                  title: 'BharatFlow Version',
+                  title: t['bharatflow_version'] ?? 'BharatFlow Version',
                   value: '1.0.8 Production',
                   color: Colors.blueGrey,
                   onTap: null),
@@ -479,8 +513,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     VoidCallback? onTap,
   }) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       onTap: onTap,
       leading: Container(
         padding: const EdgeInsets.all(10),
@@ -534,8 +567,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // ─── ACTIONS ───────────────────────────────────────────────────────────────
 
-  Future<void> _doUpdate(
-      Map<String, dynamic> data, String currentEmail) async {
+  Future<void> _doUpdate(Map<String, dynamic> data, String currentEmail) async {
     setState(() => _isSaving = true);
 
     final auth = Supabase.instance.client.auth;
@@ -686,6 +718,158 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  void _showLanguageSelectionDialog() {
+    final currentLang = ref.read(settingsProvider).language;
+    final List<Map<String, String>> languages = [
+      {'name': 'English', 'native': 'English'},
+      {'name': 'Hindi', 'native': 'हिन्दी'},
+      {'name': 'Gujarati', 'native': 'ગુજરાતી'},
+      {'name': 'Punjabi', 'native': 'ਪੰਜਾਬੀ'},
+      {'name': 'Marathi', 'native': 'मराठी'},
+      {'name': 'Bengali', 'native': 'বাংলা'},
+      {'name': 'Telugu', 'native': 'తెలుగు'},
+      {'name': 'Tamil', 'native': 'தமிழ்'},
+      {'name': 'Kannada', 'native': 'ಕನ್ನಡ'},
+      {'name': 'Malayalam', 'native': 'മലയാളം'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Select App Language',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A237E),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Choose your preferred language for the app',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: languages.length,
+                itemBuilder: (context, index) {
+                  final lang = languages[index];
+                  final isSelected = lang['name'] == currentLang;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFE3F2FD)
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF1976D2)
+                            : Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      onTap: () {
+                        final name = lang['name']!;
+                        ref.read(settingsProvider.notifier).setLanguage(name);
+                        ref
+                            .read(settingsProvider.notifier)
+                            .toggleAutoLanguage(false);
+
+                        final box = Hive.box('settings');
+                        box.put('language', name);
+                        box.put('selected_language', name);
+                        box.put('auto_language_enabled', false);
+
+                        ref.invalidate(translationsProvider);
+                        ref.invalidate(mandiPricesProvider);
+                        ref.invalidate(productListProvider);
+                        ref.invalidate(mandiProductsProvider);
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('Language changed to $name successfully!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                      leading: CircleAvatar(
+                        backgroundColor: isSelected
+                            ? const Color(0xFF1976D2)
+                            : Colors.grey.shade300,
+                        radius: 18,
+                        child: Text(
+                          lang['name']!.substring(0, 2).toUpperCase(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      title: Text(
+                        lang['name']!,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? const Color(0xFF0D47A1)
+                              : Colors.black87,
+                        ),
+                      ),
+                      subtitle: Text(
+                        lang['native']!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isSelected
+                              ? const Color(0xFF1976D2)
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle_rounded,
+                              color: Color(0xFF1976D2))
+                          : null,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showCategoryDialog(String currentEmail) {
     showModalBottomSheet(
       context: context,
@@ -728,8 +912,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Icon(icon, color: color),
           const SizedBox(width: 16),
           Text(val,
-              style:
-                  TextStyle(fontWeight: FontWeight.bold, color: color)),
+              style: TextStyle(fontWeight: FontWeight.bold, color: color)),
           const Spacer(),
           Icon(Icons.check_circle_outline, color: color, size: 18),
         ]),
@@ -797,8 +980,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return OutlinedButton.icon(
       icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
       label: const Text('LOGOUT ACCOUNT',
-          style: TextStyle(
-              color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          style:
+              TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
       onPressed: () async {
         await Supabase.instance.client.auth.signOut();
         await googleSignInInstance.signOut();
@@ -814,8 +997,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 55),
         side: const BorderSide(color: Colors.redAccent, width: 1.5),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
     );
   }

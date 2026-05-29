@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:bharat_flow/core/widgets/common_app_bar.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -17,8 +19,8 @@ import 'package:http/http.dart' as http;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/location_provider.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/services/config_service.dart';
 import '../../../../core/services/ai_service.dart';
-import '../../../../core/constants/api_keys.dart';
 
 class SoilHealthScreen extends ConsumerStatefulWidget {
   const SoilHealthScreen({super.key});
@@ -221,7 +223,7 @@ class _SoilHealthScreenState extends ConsumerState<SoilHealthScreen> {
               '?query=${Uri.encodeComponent(q)}'
               '&location=$lat,$lng'
               '&radius=1000000'
-              '&key=${ApiKeys.googlePlacesKey}';
+              '&key=${ConfigService.get('google_places_key')}';
           return http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
         }).toList();
 
@@ -264,7 +266,7 @@ class _SoilHealthScreenState extends ConsumerState<SoilHealthScreen> {
         final topBatch = foundLabs.take(10).toList();
         await Future.wait(topBatch.map((l) async {
           try {
-            final dUrl = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=${l['place_id']}&fields=formatted_phone_number,website,opening_hours&key=${ApiKeys.googlePlacesKey}';
+            final dUrl = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=${l['place_id']}&fields=formatted_phone_number,website,opening_hours&key=${ConfigService.get('google_places_key')}';
             final dRes = await http.get(Uri.parse(dUrl)).timeout(const Duration(seconds: 5));
             final dData = json.decode(dRes.body);
             if (dData['status'] == 'OK') {
@@ -330,7 +332,7 @@ class _SoilHealthScreenState extends ConsumerState<SoilHealthScreen> {
     setState(() => _isLoading = true);
     try {
       final loc = ref.read(locationProvider);
-      final url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=$_nextPageToken&key=${ApiKeys.googlePlacesKey}';
+      final url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=$_nextPageToken&key=${ConfigService.get('google_places_key')}';
       await Future.delayed(const Duration(seconds: 2));
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
       final data = json.decode(response.body);
@@ -391,6 +393,13 @@ class _SoilHealthScreenState extends ConsumerState<SoilHealthScreen> {
                 onPressed: () => setState(() => _currentView = 'landing'),
               )
             : null,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Color(0xFF1B5E20)),
+            onPressed: () => shareAppBranding(context),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
@@ -468,6 +477,9 @@ class _SoilHealthScreenState extends ConsumerState<SoilHealthScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          const DynamicAdmobCardWidget(),
+          _buildAmazonBanner(),
           if (_history.isNotEmpty) ...[
             const SizedBox(height: 32),
             Align(
@@ -478,6 +490,52 @@ class _SoilHealthScreenState extends ConsumerState<SoilHealthScreen> {
             const SizedBox(height: 12),
             ..._history.map((h) => _buildHistoryCard(h, t)),
           ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmazonBanner() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.shopping_cart_checkout, color: Colors.amber, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Improve Soil Health! Buy top-quality Fertilizers & Testing Kits from Amazon.',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2D3748)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                final uri = Uri.parse('https://amzn.to/4a8n8pM');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Buy Now on Amazon', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
         ],
       ),
     );

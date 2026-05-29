@@ -20,41 +20,71 @@ class _PermissionScreenState extends State<PermissionScreen> {
   }
 
   Future<void> _checkExistingPermissions() async {
-    final status = await Permission.location.status;
-    if (status.isGranted && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
+    try {
+      final locStatus = await Permission.location.status;
+      final notifStatus = await Permission.notification.status;
+      
+      if (locStatus.isGranted && notifStatus.isGranted) {
+        if (context.mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking existing permissions: $e");
+      // Fallback: If anything fails, navigate to Dashboard to avoid black screen
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      }
     }
   }
 
   bool _isRequesting = false;
 
   Future<void> _requestPermissions() async {
+    if (!context.mounted) return;
     setState(() => _isRequesting = true);
     
-    // Request Location, Notifications, Camera, and Microphone
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.location,
-      Permission.notification,
-      Permission.camera,
-      Permission.microphone,
-    ].request();
+    try {
+      // Request Location, Notifications, Camera, and Microphone
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.location,
+        Permission.notification,
+        Permission.camera,
+        Permission.microphone,
+      ].request();
 
-    if (statuses[Permission.location]!.isGranted) {
-      // Navigate to Dashboard
-      if (mounted) {
+      final locGranted = statuses[Permission.location]?.isGranted ?? false;
+
+      if (locGranted) {
+        if (context.mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permission is needed for Mandi & Weather data.')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error requesting permissions: $e");
+      // Fallback: Navigate to Dashboard to avoid black screen if permission channels throw exceptions
+      if (context.mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location permission is needed for Mandi & Weather data.')),
-      );
+    } finally {
+      if (context.mounted) {
+        setState(() => _isRequesting = false);
+      }
     }
-    
-    setState(() => _isRequesting = false);
   }
 
   @override

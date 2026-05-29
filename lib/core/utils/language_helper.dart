@@ -7,6 +7,87 @@ class LanguageHelper {
   static final _translator = GoogleTranslator();
   static final _supabase = Supabase.instance.client;
 
+  // Static Commodity Override Map for flawless instant offline translations
+  static const Map<String, Map<String, String>> staticCommodityOverrides = {
+    'dalchini': {
+      'hi': 'दालचीनी',
+      'gu': 'તજ (દાલચીની)',
+      'pa': 'ਦਾਲਚੀਨੀ',
+      'mr': 'दालचिनी',
+      'bn': 'দারুচিনি',
+      'te': 'దాల్చిన చెక్క',
+      'ta': 'இலவங்கப்பட்டை',
+      'kn': 'ದಾಲ್ಚಿನ್ನಿ',
+      'ml': 'കറുവപ്പട്ട',
+    },
+    'cinnamon': {
+      'hi': 'दालचीनी',
+      'gu': 'તજ',
+      'pa': 'ਦਾਲਚੀਨੀ',
+      'mr': 'दालचिनी',
+      'bn': 'দারুচিনি',
+      'te': 'దాల్చిన చెక్క',
+      'ta': 'இலவங்கப்பட்டை',
+      'kn': 'ದಾಲ್ಚಿನ್ನಿ',
+      'ml': 'കറുവപ്പട്ട',
+    },
+    'potato': {
+      'hi': 'आलू',
+      'gu': 'બટાકા',
+      'pa': 'ਆਲੂ',
+      'mr': 'बटाटा',
+      'bn': 'আলু',
+      'te': 'బంగాళాదుंप',
+      'ta': 'உருளைக்கிழங்கு',
+      'kn': 'ಆಲೂಗಡ್ಡೆ',
+      'ml': 'ഉരുളക്കിഴങ്ങ്',
+    },
+    'onion': {
+      'hi': 'प्याज',
+      'gu': 'ડુંગળી',
+      'pa': 'ਪਿਆਜ਼',
+      'mr': 'कांदा',
+      'bn': 'পেঁয়াজ',
+      'te': 'ఉల్లిపాయ',
+      'ta': 'வெங்காயம்',
+      'kn': 'ಈರುಳ್ಳಿ',
+      'ml': 'സവാള',
+    },
+    'tomato': {
+      'hi': 'टमाटर',
+      'gu': 'ટામેટા',
+      'pa': 'ਟਮਾਟਰ',
+      'mr': 'टोमॅटो',
+      'bn': 'টমেটো',
+      'te': 'టమోటా',
+      'ta': 'தக்காளி',
+      'kn': 'ಟೊಮೆಟೊ',
+      'ml': 'തക്കാളി',
+    },
+    'wheat': {
+      'hi': 'गेहूं',
+      'gu': 'ઘઉં',
+      'pa': 'ਕਣਕ',
+      'mr': 'गहू',
+      'bn': 'গম',
+      'te': 'గోధుమలు',
+      'ta': 'கோதுமை',
+      'kn': 'ಗೋದೂಮಿ',
+      'ml': 'ഗോതമ്പ്',
+    },
+    'rice': {
+      'hi': 'चावल',
+      'gu': 'ચોખા',
+      'pa': 'ਚੌਲ',
+      'mr': 'तांदूळ',
+      'bn': 'চাল',
+      'te': 'వరి',
+      'ta': 'அரிசி',
+      'kn': 'ಅಕ್ಕಿ',
+      'ml': 'അരി',
+    },
+  };
+
   // State-to-Language Mapping (All 28 States + UTs)
   static const Map<String, String> indiaLanguageMap = {
     // Northern India
@@ -31,7 +112,6 @@ class LanguageHelper {
     "Daman and Diu": "gu",
     "Daman & Diu": "gu",
 
-
     // Southern India
     "Karnataka": "kn",
     "Kerala": "ml",
@@ -50,9 +130,9 @@ class LanguageHelper {
     // North-East
     "Assam": "as",
     "Arunachal Pradesh": "hi",
-    "Manipur": "hi", // Manipur (Meitei) might not be in all versions
+    "Manipur": "hi",
     "Meghalaya": "hi",
-    "Mizoram": "hi", // Mizo
+    "Mizoram": "hi",
     "Nagaland": "hi",
     "Tripura": "bn",
 
@@ -71,12 +151,38 @@ class LanguageHelper {
     "Ludhiana": "pa",
   };
 
-  static Future<String> translate(String text, String state, String city) async {
+  // Heuristic validation: checks if a translation contains English letters when it should be Indic script
+  static bool _isInvalidTranslation(String translated, String targetLang) {
+    if (targetLang == 'en') return false;
+    const nonLatinLangs = {
+      'hi',
+      'gu',
+      'pa',
+      'mr',
+      'bn',
+      'te',
+      'ta',
+      'kn',
+      'ml'
+    };
+    if (!nonLatinLangs.contains(targetLang)) return false;
+
+    // If target language is non-Latin, but translation contains Latin letters and no regional characters
+    final hasLatin = RegExp(r'[a-zA-Z]').hasMatch(translated);
+    final hasRegional = translated.runes.any((r) => r > 127);
+
+    return hasLatin && !hasRegional;
+  }
+
+  static Future<String> translate(
+      String text, String state, String city) async {
     if (text.trim().isEmpty) return text;
 
     final settingsBox = Hive.box('settings');
-    final bool isAutoEnabled = settingsBox.get('auto_language_enabled', defaultValue: false);
-    final String selectedLang = settingsBox.get('selected_language', defaultValue: 'English');
+    final bool isAutoEnabled =
+        settingsBox.get('auto_language_enabled', defaultValue: false);
+    final String selectedLang =
+        settingsBox.get('language', defaultValue: 'English');
 
     String lang = "en";
 
@@ -84,23 +190,54 @@ class LanguageHelper {
       // Determine target language based on location
       String normalizedState = _capitalize(state.trim());
       String normalizedCity = _capitalize(city.trim());
-      lang = cityLanguageOverride[normalizedCity] ?? indiaLanguageMap[normalizedState] ?? "hi";
+      lang = cityLanguageOverride[normalizedCity] ??
+          indiaLanguageMap[normalizedState] ??
+          "hi";
     } else {
       // Use manual selection
       switch (selectedLang) {
-        case 'Hindi': lang = 'hi'; break;
-        case 'Gujarati': lang = 'gu'; break;
-        case 'Punjabi': lang = 'pa'; break;
-        case 'Marathi': lang = 'mr'; break;
-        case 'Bengali': lang = 'bn'; break;
-        case 'Telugu': lang = 'te'; break;
-        case 'Tamil': lang = 'ta'; break;
-        case 'Kannada': lang = 'kn'; break;
-        case 'Malayalam': lang = 'ml'; break;
-        default: lang = 'en';
+        case 'Hindi':
+          lang = 'hi';
+          break;
+        case 'Gujarati':
+          lang = 'gu';
+          break;
+        case 'Punjabi':
+          lang = 'pa';
+          break;
+        case 'Marathi':
+          lang = 'mr';
+          break;
+        case 'Bengali':
+          lang = 'bn';
+          break;
+        case 'Telugu':
+          lang = 'te';
+          break;
+        case 'Tamil':
+          lang = 'ta';
+          break;
+        case 'Kannada':
+          lang = 'kn';
+          break;
+        case 'Malayalam':
+          lang = 'ml';
+          break;
+        default:
+          lang = 'en';
       }
     }
-    
+
+    // 1. Static Commodity Override Map for flawless instant offline translations
+    final cleanText = text.trim();
+    final lowerCleanText = cleanText.toLowerCase();
+    if (staticCommodityOverrides.containsKey(lowerCleanText)) {
+      final translationMap = staticCommodityOverrides[lowerCleanText]!;
+      if (translationMap.containsKey(lang)) {
+        return translationMap[lang]!;
+      }
+    }
+
     final translationBox = Hive.box('translations_cache');
     final String cacheKey = '${lang}_$text';
 
@@ -110,19 +247,22 @@ class LanguageHelper {
       // Force translation from regional to English, bypass cache to ensure clean result
     } else {
       if (translationBox.containsKey(cacheKey)) {
-        return translationBox.get(cacheKey);
+        final cachedVal = translationBox.get(cacheKey);
+        if (!_isInvalidTranslation(cachedVal, lang)) {
+          return cachedVal;
+        }
       }
       if (lang == "en") return text; // Standard English, no translation needed
     }
 
     try {
       // Pre-process: If name has parentheses like "Yam(Ratalu)", try to extract local part
-      String cleanText = text;
-      if (text.contains('(') && text.contains(')')) {
+      String processedText = cleanText;
+      if (cleanText.contains('(') && cleanText.contains(')')) {
         final regExp = RegExp(r'\((.*?)\)');
-        final match = regExp.firstMatch(text);
+        final match = regExp.firstMatch(cleanText);
         if (match != null && match.group(1) != null) {
-          cleanText = match.group(1)!;
+          processedText = match.group(1)!;
         }
       }
 
@@ -130,33 +270,40 @@ class LanguageHelper {
       final existing = await _supabase
           .from('translations_cache')
           .select('translated_text')
-          .eq('original_text', cleanText)
+          .eq('original_text', processedText)
           .eq('target_lang', lang)
           .maybeSingle()
           .timeout(const Duration(seconds: 3));
 
       if (existing != null) {
         final result = existing['translated_text'];
-        await translationBox.put(cacheKey, result);
-        return result;
+        if (!_isInvalidTranslation(result, lang)) {
+          await translationBox.put(cacheKey, result);
+          return result;
+        }
       }
 
       // 3. Translate using Google Translator
-      final translation = await _translator.translate(cleanText, to: lang)
+      final translation = await _translator
+          .translate(processedText, to: lang)
           .timeout(const Duration(seconds: 5));
       ApiTracker.logCall('Gemini: AI Translation', statusCode: 200);
       final result = translation.text;
 
       // 4. Save to Local and Supabase Cache
       await translationBox.put(cacheKey, result);
-      
-      _supabase.from('translations_cache').upsert({
-        'original_text': cleanText,
-        'translated_text': result,
-        'target_lang': lang,
-      }).then((_) {}).catchError((e) {
-        // Silently ignore RLS or network errors for translations
-      });
+
+      _supabase
+          .from('translations_cache')
+          .upsert({
+            'original_text': processedText,
+            'translated_text': result,
+            'target_lang': lang,
+          })
+          .then((_) {})
+          .catchError((e) {
+            // Silently ignore RLS or network errors for translations
+          });
 
       return result;
     } catch (e) {
@@ -165,10 +312,28 @@ class LanguageHelper {
     }
   }
 
+  static Future<String> translateToEnglish(String text) async {
+    if (text.trim().isEmpty) return text;
+    bool containsRegional = text.runes.any((r) => r > 127);
+    if (!containsRegional) return text; // Already English/ASCII
+
+    try {
+      final translation = await _translator
+          .translate(text, to: 'en')
+          .timeout(const Duration(seconds: 4));
+      ApiTracker.logCall('GoogleTranslator: To English', statusCode: 200);
+      return translation.text;
+    } catch (e) {
+      return text;
+    }
+  }
+
   static String getLanguageForLocation(String state, String city) {
     String normalizedState = _capitalize(state.trim());
     String normalizedCity = _capitalize(city.trim());
-    return cityLanguageOverride[normalizedCity] ?? indiaLanguageMap[normalizedState] ?? "hi";
+    return cityLanguageOverride[normalizedCity] ??
+        indiaLanguageMap[normalizedState] ??
+        "hi";
   }
 
   static String _capitalize(String s) {
@@ -179,4 +344,3 @@ class LanguageHelper {
     }).join(' ');
   }
 }
-
