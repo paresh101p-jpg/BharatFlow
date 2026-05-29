@@ -5,6 +5,7 @@ import '../../data/models/leader_model.dart';
 import 'leader_detail_screen.dart';
 import 'package:bharat_flow/core/providers/location_provider.dart';
 import '../widgets/battle_mode_widget.dart';
+import 'package:bharat_flow/core/services/admob_service.dart';
 
 class PoliticalHubScreen extends ConsumerStatefulWidget {
   const PoliticalHubScreen({super.key});
@@ -351,11 +352,21 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                   : _leaders.isEmpty
                     ? Center(child: Text(_currentTabIndex == 3 ? 'You haven\'t voted for any leaders yet.' : 'No leaders found.'))
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _leaders.length,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: _leaders.length + (_leaders.length ~/ 6),
                         itemBuilder: (context, index) {
-                          final leader = _leaders[index];
-                          return _buildLeaderCard(leader, index);
+                          if (index > 0 && index % 7 == 6) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: DynamicBannerAdWidget(),
+                            );
+                          }
+                          
+                          final leaderIndex = index - (index ~/ 7);
+                          if (leaderIndex >= _leaders.length) return const SizedBox.shrink();
+                          
+                          final leader = _leaders[leaderIndex];
+                          return _buildLeaderCard(leader, leaderIndex);
                         },
                       ),
           ),
