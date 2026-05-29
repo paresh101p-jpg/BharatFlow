@@ -66,12 +66,28 @@ class LeaderDetailScreen extends StatelessWidget {
             
             // Wikipedia Description
             if (leader.description != null && leader.description!.isNotEmpty) ...[
-              const Text('About Leader', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20))),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
-                child: Text(leader.description!, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                  backgroundColor: Colors.white,
+                  collapsedBackgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  collapsedShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  title: const Text('About Leader', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20))),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                      child: Text(leader.description!, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
             ],
