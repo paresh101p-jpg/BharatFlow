@@ -184,32 +184,15 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
           });
         }
       } else {
-        // Fetch local leaders first directly from DB
-        List<dynamic> combined = [];
-        
-        if (loc.city.isNotEmpty) {
-          final localRes = await _supabase.from('leaders_master').select().ilike('constituency', '%${loc.city}%').limit(20);
-          combined.addAll(localRes as List);
-        }
-        
-        if (loc.state.isNotEmpty && combined.length < 30) {
-          final stateRes = await _supabase.from('leaders_master').select().ilike('constituency', '%${loc.state}%').limit(30);
-          for (var item in stateRes as List) {
-            if (!combined.any((e) => e['id'] == item['id'])) combined.add(item);
-          }
-        }
-        
-        // Fill remaining up to 50
-        if (combined.length < 50) {
-          final restRes = await _supabase.from('leaders_master').select().limit(50 - combined.length);
-          for (var item in restRes as List) {
-            if (!combined.any((e) => e['id'] == item['id'])) combined.add(item);
-          }
-        }
+        // Use RPC for optimized local leaders fetch
+        final response = await _supabase.rpc('get_local_leaders', params: {
+          'user_city': loc.city,
+          'user_state': loc.state,
+        });
         
         if (mounted) {
           setState(() {
-            _leaders = combined.map((e) => LeaderModel.fromJson(e)).toList();
+            _leaders = (response as List).map((e) => LeaderModel.fromJson(e)).toList();
             _isLoading = false;
           });
         }
@@ -230,29 +213,10 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
         return;
       }
 
-      // First, check if the exact same vote already exists
-      final existingVote = await _supabase
-          .from('user_opinions')
-          .select('vote')
-          .eq('user_id', user.id)
-          .eq('leader_id', leaderId)
-          .maybeSingle();
-
-      if (existingVote != null && existingVote['vote'] == voteType) {
-        // User clicked the same vote button again, meaning they want to remove their vote
-        await _supabase
-            .from('user_opinions')
-            .delete()
-            .eq('user_id', user.id)
-            .eq('leader_id', leaderId);
-      } else {
-        // Upsert the new user opinion (insert or change vote)
-        await _supabase.from('user_opinions').upsert({
-          'user_id': user.id,
-          'leader_id': leaderId,
-          'vote': voteType,
-        }, onConflict: 'user_id,leader_id');
-      }
+      await _supabase.rpc('toggle_vote', params: {
+        'p_leader_id': leaderId,
+        'p_vote_type': voteType
+      });
       
       // The trigger should handle updating the counter. For now we just refresh.
       _fetchLocalLeaders();
@@ -607,6 +571,30 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
     final likePercent = totalVotes > 0 ? (leader.totalLikes / totalVotes) : 0.0;
     
     final isTrending = _currentTabIndex == 1;
+
+    // Premium Pro UI Colors based on Tabs
+    Color cardColor = Colors.white;
+    LinearGradient? cardGradient;
+    Color shadowColor = Colors.black.withOpacity(0.05);
+
+    if (_currentTabIndex == 1) { // Trending 🔥
+      cardGradient = const LinearGradient(
+        colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      shadowColor = Colors.orange.withOpacity(0.2);
+    } else if (_currentTabIndex == 0) { // All Leaders
+      cardColor = const Color(0xFFF1F8E9);
+      shadowColor = Colors.green.withOpacity(0.15);
+    } else if (_currentTabIndex == 3) { // My Votes
+      cardGradient = const LinearGradient(
+        colors: [Color(0xFFF3E5F5), Color(0xFFE1BEE7)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      shadowColor = Colors.purple.withOpacity(0.2);
+    }
     
     return GestureDetector(
       onTap: () {
@@ -619,13 +607,14 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: cardGradient == null ? cardColor : null,
+          gradient: cardGradient,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: shadowColor,
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             )
           ]
         ),
