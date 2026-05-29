@@ -89,29 +89,36 @@ class LeaderDetailScreen extends StatelessWidget {
             ],
             
             // Data Source Disclaimer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                backgroundColor: Colors.grey.shade100,
+                collapsedBackgroundColor: Colors.grey.shade100,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                collapsedShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                title: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Data Source & Disclaimer', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade800, fontSize: 14)),
+                  ],
+                ),
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.grey.shade700, size: 20),
-                      const SizedBox(width: 8),
-                      Text('Data Source & Disclaimer', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade800, fontSize: 14)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '• Source: Information is aggregated from officially filed ECI Affidavits, MyNeta.info, and Wikipedia.\n'
-                    '• N/A Fields: Any missing financial or educational data means it hasn\'t been published or processed yet.\n'
-                    '• Liability: This app is an independent platform for public awareness. Developers are not affiliated with any government entity and do not take legal responsibility for absolute accuracy.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                    child: Text(
+                      '• Source: Information is aggregated from officially filed ECI Affidavits, MyNeta.info, and Wikipedia.\n'
+                      '• N/A Fields: Any missing financial or educational data means it hasn\'t been published or processed yet.\n'
+                      '• Liability: This app is an independent platform for public awareness. Developers are not affiliated with any government entity and do not take legal responsibility for absolute accuracy.',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.4),
+                    ),
                   ),
                 ],
               ),
