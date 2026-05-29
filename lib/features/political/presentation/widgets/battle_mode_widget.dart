@@ -275,6 +275,7 @@ class _LeaderSearchBottomSheetState extends State<_LeaderSearchBottomSheet> {
       final res = await _supabase
           .from('leaders_master')
           .select()
+          .eq('is_active', true)
           .order('total_likes', ascending: false)
           .limit(20);
       setState(() {
@@ -299,6 +300,7 @@ class _LeaderSearchBottomSheetState extends State<_LeaderSearchBottomSheet> {
       final res = await _supabase
           .from('leaders_master')
           .select()
+          .eq('is_active', true)
           .or('name.ilike.%$q%,constituency.ilike.%$q%')
           .order('total_likes', ascending: false)
           .limit(20);

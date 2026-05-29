@@ -73,10 +73,18 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
             final updatedLeaderId = payload.newRecord['id'];
             final updatedLikes = payload.newRecord['total_likes'];
             final updatedDislikes = payload.newRecord['total_dislikes'];
+            final isActive = payload.newRecord['is_active'];
 
             if (mounted) {
               setState(() {
                 final index = _leaders.indexWhere((l) => l.id == updatedLeaderId);
+                
+                // If a leader becomes inactive, remove them from the list
+                if (isActive == false) {
+                  if (index != -1) _leaders.removeAt(index);
+                  return;
+                }
+
                 if (index != -1) {
                   final oldLeader = _leaders[index];
                   _leaders[index] = LeaderModel(
@@ -111,7 +119,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
     try {
       if (_trendingDaysFilter == 99999) {
         // All time - use standard table for faster load
-        final response = await _supabase.from('leaders_master').select().order('total_likes', ascending: false).limit(10);
+        final response = await _supabase.from('leaders_master').select().eq('is_active', true).order('total_likes', ascending: false).limit(10);
         if (mounted) {
           setState(() {
             _leaders = (response as List).map((e) => LeaderModel.fromJson(e)).toList();
@@ -155,7 +163,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
           return;
         }
         
-        var query = _supabase.from('leaders_master').select().inFilter('id', votedLeaderIds);
+        var query = _supabase.from('leaders_master').select().eq('is_active', true).inFilter('id', votedLeaderIds);
         if (_searchQuery.isNotEmpty) {
           final formattedQuery = _searchQuery.trim().replaceAll(RegExp(r'\s+'), ' & ');
           query = query.textSearch('search_vector', "'$formattedQuery'");
@@ -172,7 +180,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
       
       // Normal fetch (All Leaders - Index 0)
       if (_searchQuery.isNotEmpty) {
-        var query = _supabase.from('leaders_master').select();
+        var query = _supabase.from('leaders_master').select().eq('is_active', true);
         final formattedQuery = _searchQuery.trim().replaceAll(RegExp(r'\s+'), ' & ');
         query = query.textSearch('search_vector', "'$formattedQuery'");
         final response = await query.limit(50);
