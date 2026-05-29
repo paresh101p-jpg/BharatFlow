@@ -947,13 +947,6 @@ class _HomeTab extends ConsumerWidget {
                 const SizedBox(height: 24),
                 const _FavoriteMandiWatch(),
                 const SizedBox(height: 24),
-                Center(
-                    child: Text(t['data_source'] ?? 'Data Source: DATA.GOV.IN',
-                        style: const TextStyle(
-                            fontSize: 9,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1))),
                 const SizedBox(height: 30),
               ],
             ),
