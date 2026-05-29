@@ -79,12 +79,15 @@ class _LeaderDetailScreenState extends State<LeaderDetailScreen> {
                 
                 const SizedBox(height: 24),
                 
-                const Text(
-                  'NETA KUNDALI (Official Affidavit)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B5E20),
-                    fontSize: 14,
+                const Center(
+                  child: Text(
+                    'NETA KUNDALI (Official Affidavit)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
