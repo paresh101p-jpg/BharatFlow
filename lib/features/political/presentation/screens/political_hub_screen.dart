@@ -24,7 +24,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
 
   RealtimeChannel? _realtimeChannel;
 
-  int _currentTabIndex = 0; // 0: All Leaders, 1: My Votes, 2: Election Calendar
+  int _currentTabIndex = 1; // 0: All Leaders, 1: Trending/My Votes, etc.
   List<Map<String, dynamic>> _elections = [];
 
   @override
@@ -59,21 +59,6 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching elections: $e');
-    }
-  }
-
-  Future<void> _fetchTotalLeadersCount() async {
-    try {
-      // In Supabase, fetching all ids to get length is a simple fallback if count API is tricky, 
-      // but limit 1 with exact count is better.
-      final response = await _supabase.from('leaders_master').select('id');
-      if (mounted) {
-        setState(() {
-          _totalLeadersCount = (response as List).length;
-        });
-      }
-    } catch (e) {
-      debugPrint('Count error: $e');
     }
   }
 
@@ -342,8 +327,29 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                     _fetchLocalLeaders();
                   },
                 ),
+                // Tabs Row
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        _build3DTabItem(1, 'Trending 🔥'),
+                        _build3DTabItem(0, 'All Leaders'),
+                        _build3DTabItem(2, 'Battle ⚔️'),
+                        _build3DTabItem(4, 'Elections'),
+                        _build3DTabItem(3, 'My Votes'),
+                      ],
+                    ),
+                  ),
+                ),
                 if (_currentTabIndex == 1) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -358,31 +364,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                ] else ...[
-                  const SizedBox(height: 12),
                 ],
-                // Toggle between All and My Votes
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        _build3DTabItem(0, 'All Leaders'),
-                        _build3DTabItem(1, 'Trending 🔥'),
-                        _build3DTabItem(2, 'Battle ⚔️'),
-                        _build3DTabItem(3, 'My Votes'),
-                        _build3DTabItem(4, 'Elections'),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -466,7 +448,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
         daysInt = -1; // Mark for removal
       }
       return {'data': e, 'daysStr': daysStr, 'daysInt': daysInt};
-    }).where((e) => e['daysInt'] >= 0).toList(); // Keep only future or today
+    }).where((e) => (e['daysInt'] as int) >= 0).toList(); // Keep only future or today
 
     // Sort by days left
     upcomingElections.sort((a, b) => (a['daysInt'] as int).compareTo(b['daysInt'] as int));
