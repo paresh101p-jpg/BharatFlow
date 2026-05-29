@@ -456,6 +456,31 @@ Widget build(BuildContext context) {
         ),
         const SizedBox(height: 16),
         const DynamicAdmobCardWidget(),
+        const SizedBox(height: 30),
+        Center(
+          child: Column(
+            children: [
+              Icon(Icons.security, color: Colors.grey.shade400, size: 16),
+              const SizedBox(height: 4),
+              Text(
+                'Data Source: Agmarknet (Govt. of India)',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Prices shown are for reference purpose only',
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 80),
       ],
     );
