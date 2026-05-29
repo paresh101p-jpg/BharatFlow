@@ -268,13 +268,18 @@ class _LeaderSearchBottomSheetState extends State<_LeaderSearchBottomSheet> {
     }
     setState(() => _isLoading = true);
     try {
-      final formattedQuery = query.trim().replaceAll(RegExp(r'\s+'), ' & ');
-      final res = await _supabase.from('leaders_master').select().textSearch('search_vector', "'\$formattedQuery'").limit(20);
+      final q = query.trim();
+      final res = await _supabase
+          .from('leaders_master')
+          .select()
+          .or('name.ilike.%$q%,constituency.ilike.%$q%')
+          .limit(20);
       setState(() {
         _results = (res as List).map((e) => LeaderModel.fromJson(e)).toList();
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Battle Search Error: $e');
       setState(() => _isLoading = false);
     }
   }
