@@ -356,10 +356,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                         itemCount: _leaders.length + (_leaders.length ~/ 6),
                         itemBuilder: (context, index) {
                           if (index > 0 && index % 7 == 6) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: DynamicBannerAdWidget(),
-                            );
+                            return _buildAdCard();
                           }
                           
                           final leaderIndex = index - (index ~/ 7);
@@ -723,6 +720,56 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
             )
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAdCard() {
+    Color cardColor = Colors.white;
+    LinearGradient? cardGradient;
+    Color shadowColor = Colors.black.withOpacity(0.05);
+
+    if (_currentTabIndex == 1) { // Trending 🔥
+      cardGradient = const LinearGradient(
+        colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      shadowColor = Colors.orange.withOpacity(0.2);
+    } else if (_currentTabIndex == 0) { // All Leaders
+      cardColor = const Color(0xFFF1F8E9);
+      shadowColor = Colors.green.withOpacity(0.15);
+    } else if (_currentTabIndex == 3) { // My Votes
+      cardGradient = const LinearGradient(
+        colors: [Color(0xFFF3E5F5), Color(0xFFE1BEE7)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      shadowColor = Colors.purple.withOpacity(0.2);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: cardGradient == null ? cardColor : null,
+        gradient: cardGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: shadowColor, blurRadius: 10, offset: const Offset(0, 4))
+        ]
+      ),
+      child: const Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(bottom: 4.0, left: 8.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Sponsored', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ),
+          ),
+          DynamicBannerAdWidget(),
+        ],
       ),
     );
   }
