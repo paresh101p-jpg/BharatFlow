@@ -350,6 +350,45 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
     );
   }
 
+  String _getDaysLeft(String dateStr) {
+    try {
+      // Very basic parsing for strings like "Oct-Nov 2024" or "Feb 2025" or "Dec 2027"
+      // We will extract the first month and the year to make a rough estimate
+      final parts = dateStr.split(' ');
+      if (parts.length < 2) return '';
+      
+      final yearStr = parts.last;
+      final year = int.tryParse(yearStr);
+      if (year == null) return '';
+      
+      final monthPart = parts.first.split('-').first.toLowerCase();
+      int month = 1;
+      if (monthPart.contains('jan')) month = 1;
+      else if (monthPart.contains('feb')) month = 2;
+      else if (monthPart.contains('mar')) month = 3;
+      else if (monthPart.contains('apr')) month = 4;
+      else if (monthPart.contains('may')) month = 5;
+      else if (monthPart.contains('jun')) month = 6;
+      else if (monthPart.contains('jul')) month = 7;
+      else if (monthPart.contains('aug')) month = 8;
+      else if (monthPart.contains('sep')) month = 9;
+      else if (monthPart.contains('oct')) month = 10;
+      else if (monthPart.contains('nov')) month = 11;
+      else if (monthPart.contains('dec')) month = 12;
+      
+      final targetDate = DateTime(year, month, 15); // Assume mid-month
+      final today = DateTime.now();
+      
+      final difference = targetDate.difference(today).inDays;
+      if (difference < 0) return 'Ongoing/Past';
+      if (difference == 0) return 'Today';
+      
+      return '$difference Days Left';
+    } catch (e) {
+      return '';
+    }
+  }
+
   Widget _buildElectionCalendar() {
     if (_elections.isEmpty) {
       return const Center(child: Text('Loading Election Calendar...'));
@@ -359,6 +398,8 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
       itemCount: _elections.length,
       itemBuilder: (context, index) {
         final election = _elections[index];
+        final daysLeft = _getDaysLeft(election['expected_date']);
+        
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -388,14 +429,24 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Text(election['status'], style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (daysLeft.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(daysLeft, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 11)),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Text(election['status'], style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+                  )
+                ],
               )
             ],
           ),
