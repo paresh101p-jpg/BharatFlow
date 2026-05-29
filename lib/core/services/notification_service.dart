@@ -874,6 +874,40 @@ void callbackDispatcher() {
         }
       } catch(_) {}
 
+      // 6. NEW NETA NOTIFICATION CHECK
+      try {
+        final userCity = locBox.get('last_city');
+        if (userCity != null && userCity.toString().isNotEmpty) {
+          final res = await supabase!
+              .from('leaders_master')
+              .select('id, name, party, constituency')
+              .eq('is_active', true)
+              .ilike('constituency', '%$userCity%')
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+
+          if (res != null) {
+            final latestNetaId = res['id'].toString();
+            final lastNotifiedNetaId = stateBox.get('last_notified_neta_city_$userCity');
+
+            if (lastNotifiedNetaId != latestNetaId) {
+              final netaName = res['name'] ?? 'Naya Neta';
+              final party = res['party'] ?? 'Independent';
+              
+              NotificationService.showNotification(
+                lang == 'hi' ? "📢 नया नेता अलर्ट" : "📢 New Neta Alert",
+                lang == 'hi' 
+                    ? "$netaName ($party) अब आपके क्षेत्र से जनता की आवाज़ पर आ गए हैं!" 
+                    : "$netaName ($party) is now on Janta Ki Awaaz from your area!",
+              );
+              
+              await stateBox.put('last_notified_neta_city_$userCity', latestNetaId);
+            }
+          }
+        }
+      } catch(_) {}
+
       return Future.value(true);
     } catch (e) {
       return Future.value(true);
