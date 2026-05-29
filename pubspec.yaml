@@ -31,8 +31,8 @@ dependencies:
   url_launcher: ^6.2.4
   translator: ^1.0.4+1
   google_generative_ai: ^0.4.0
-  share_plus: ^9.0.0      # WhatsApp share ke liye
-  path_provider: ^2.1.2
+  share_plus: ^7.2.2      # WhatsApp share ke liye
+  path_provider: ^2.1.5
   http: ^1.2.0            # News API call ke liye
   image_picker: ^1.0.7
   workmanager: ^0.5.2     # Background task ke liye
@@ -50,7 +50,6 @@ dependencies:
   maps_toolkit: ^3.0.0
   firebase_analytics: ^11.3.0
   screenshot: ^3.0.0
-  screenshot_callback: ^3.0.1
 
 dev_dependencies:
   flutter_test:

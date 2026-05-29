@@ -24,13 +24,18 @@ import 'package:bharat_flow/features/mandi/data/repositories/mandi_repository.da
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
+bool isFirebaseInitialized = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase (Required for Topic Subscriptions & FCM)
   try {
     await Firebase.initializeApp();
-  } catch (_) {} 
+    isFirebaseInitialized = true;
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
+  }
 
 
   // ✅ FIX 1: autoRefreshToken true kiya — session automatically refresh hoga
@@ -146,7 +151,8 @@ class _BharatFlowAppState extends ConsumerState<BharatFlowApp> {
     return MaterialApp(
       navigatorKey: navigatorKey,
       navigatorObservers: [
-        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+        if (isFirebaseInitialized)
+          FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
       ],
       title: 'BharatFlow',
       debugShowCheckedModeBanner: false,
