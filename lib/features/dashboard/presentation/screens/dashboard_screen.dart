@@ -2099,92 +2099,86 @@ class _TopNetasSectionState extends State<_TopNetasSection> {
           ),
         ),
         const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: _topLeaders.asMap().entries.map((e) {
-              final i = e.key;
-              final l = e.value;
-              final colors = [
-                Colors.amber.shade400,
-                Colors.grey.shade400,
-                Colors.orange.shade300
-              ];
-              final ranks = ['👑 #1', '🥈 #2', '🥉 #3'];
-              
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const PoliticalHubScreen()),
-                  );
-                },
-                child: Container(
-                  width: 140,
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colors[i], width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors[i].withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(ranks[i], style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
-                      const SizedBox(height: 8),
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Colors.grey.shade100,
-                        backgroundImage: (l['photo_url'] != null && l['photo_url'].toString().isNotEmpty)
-                            ? NetworkImage(l['photo_url'])
-                            : null,
-                        child: (l['photo_url'] == null || l['photo_url'].toString().isEmpty)
-                            ? const Icon(Icons.person, color: Colors.grey)
-                            : null,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        l['name'] ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.thumb_up_rounded, color: Colors.green, size: 10),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${l['total_likes'] ?? 0}',
-                              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
+          child: GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PoliticalHubScreen())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF2E1C72), Color(0xFF1E114D)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-              );
-            }).toList(),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (_topLeaders.length > 1) _buildPodiumItem(_topLeaders[1], 2),
+                  if (_topLeaders.isNotEmpty) _buildPodiumItem(_topLeaders[0], 1),
+                  if (_topLeaders.length > 2) _buildPodiumItem(_topLeaders[2], 3),
+                ],
+              ),
+            ),
           ),
-        )
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPodiumItem(Map<String, dynamic> leader, int rank) {
+    final isFirst = rank == 1;
+    final color = isFirst ? Colors.amber : (rank == 2 ? Colors.grey.shade300 : Colors.orange.shade300);
+    final size = isFirst ? 80.0 : 60.0;
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isFirst) const Icon(Icons.workspace_premium_rounded, color: Colors.amber, size: 32),
+        if (!isFirst) Text('${rank}nd'.replaceFirst('3nd', '3rd'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: isFirst ? 4 : 2),
+            boxShadow: [if (isFirst) BoxShadow(color: Colors.amber.withOpacity(0.5), blurRadius: 15, spreadRadius: 2)],
+          ),
+          child: ClipOval(
+            child: (leader['photo_url'] != null && leader['photo_url'].toString().isNotEmpty)
+                ? Image.network(leader['photo_url'], fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, color: Colors.grey))
+                : Container(color: Colors.white, child: const Icon(Icons.person, color: Colors.grey)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: isFirst ? 100 : 80,
+          child: Text(
+            leader['name'] ?? '',
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: isFirst ? FontWeight.w900 : FontWeight.bold,
+              fontSize: isFirst ? 13 : 11,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${leader['total_likes'] ?? 0} Votes',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: isFirst ? 13 : 11,
+          ),
+        ),
       ],
     );
   }
