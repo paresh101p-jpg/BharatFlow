@@ -11,6 +11,7 @@ class LeaderModel {
   final int totalLikes;
   final int totalDislikes;
   final String? description;
+  final String? birthdate;
 
   LeaderModel({
     required this.id,
@@ -25,6 +26,7 @@ class LeaderModel {
     this.totalLikes = 0,
     this.totalDislikes = 0,
     this.description,
+    this.birthdate,
   });
 
   factory LeaderModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class LeaderModel {
       totalLikes: json['total_likes'] as int? ?? 0,
       totalDislikes: json['total_dislikes'] as int? ?? 0,
       description: json['description'] as String?,
+      birthdate: json['birthdate'] as String?,
     );
   }
 }

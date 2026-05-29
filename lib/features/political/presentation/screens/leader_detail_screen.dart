@@ -57,6 +57,8 @@ class LeaderDetailScreen extends StatelessWidget {
                   SizedBox(width: (MediaQuery.of(context).size.width - 48) / 2, child: _buildInfoCard('Education', leader.education!, Icons.school, Colors.blue)),
                 if (leader.criminalCases != null)
                   SizedBox(width: (MediaQuery.of(context).size.width - 48) / 2, child: _buildInfoCard('Criminal Cases', '${leader.criminalCases}', Icons.gavel, leader.criminalCases > 0 ? Colors.red : Colors.green)),
+                if (leader.birthdate != null && leader.birthdate!.isNotEmpty)
+                  SizedBox(width: (MediaQuery.of(context).size.width - 48) / 2, child: _buildInfoCard('Birthdate', leader.birthdate!, Icons.cake, Colors.orange)),
               ],
             ),
             

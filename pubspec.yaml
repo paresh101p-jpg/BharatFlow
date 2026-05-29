@@ -49,6 +49,8 @@ dependencies:
   google_maps_flutter: ^2.5.3
   maps_toolkit: ^3.0.0
   firebase_analytics: ^11.3.0
+  screenshot: ^3.0.0
+  screenshot_callback: ^3.0.1
 
 dev_dependencies:
   flutter_test:
