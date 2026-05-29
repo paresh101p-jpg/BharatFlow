@@ -259,11 +259,38 @@ class _LeaderSearchBottomSheet extends StatefulWidget {
 class _LeaderSearchBottomSheetState extends State<_LeaderSearchBottomSheet> {
   final SupabaseClient _supabase = Supabase.instance.client;
   List<LeaderModel> _results = [];
+  List<LeaderModel> _defaultSuggestions = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultSuggestions();
+  }
+
+  void _loadDefaultSuggestions() async {
+    setState(() => _isLoading = true);
+    try {
+      // Load top 20 trending/popular leaders by likes as default
+      final res = await _supabase
+          .from('leaders_master')
+          .select()
+          .order('total_likes', ascending: false)
+          .limit(20);
+      setState(() {
+        _defaultSuggestions = (res as List).map((e) => LeaderModel.fromJson(e)).toList();
+        _results = _defaultSuggestions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Battle Default Search Error: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   void _search(String query) async {
     if (query.isEmpty) {
-      setState(() => _results = []);
+      setState(() => _results = _defaultSuggestions);
       return;
     }
     setState(() => _isLoading = true);
@@ -273,6 +300,7 @@ class _LeaderSearchBottomSheetState extends State<_LeaderSearchBottomSheet> {
           .from('leaders_master')
           .select()
           .or('name.ilike.%$q%,constituency.ilike.%$q%')
+          .order('total_likes', ascending: false)
           .limit(20);
       setState(() {
         _results = (res as List).map((e) => LeaderModel.fromJson(e)).toList();
