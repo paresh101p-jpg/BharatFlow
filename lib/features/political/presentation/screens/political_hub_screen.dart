@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/models/leader_model.dart';
+import '../../data/models/party_model.dart';
 import 'leader_detail_screen.dart';
 import 'package:bharat_flow/core/providers/location_provider.dart';
 import '../widgets/battle_mode_widget.dart';
@@ -18,7 +19,9 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   final TextEditingController _searchController = TextEditingController();
   List<LeaderModel> _leaders = [];
+  List<PartyModel> _parties = [];
   bool _isLoading = true;
+  bool _isPartiesLoading = false;
   String _searchQuery = '';
   int _trendingDaysFilter = 99999;
   int _totalLeadersCount = 0;
@@ -314,6 +317,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                       children: [
                         _build3DTabItem(1, 'Trending 🔥'),
                         _build3DTabItem(0, 'All Leaders'),
+                        _build3DTabItem(5, 'All Parties 🚩'),
                         _build3DTabItem(2, 'Battle ⚔️'),
                         _build3DTabItem(4, 'Elections'),
                         _build3DTabItem(3, 'My Votes'),
@@ -333,6 +337,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
                         _buildTimeFilterChip('7 Days', 7),
                         _buildTimeFilterChip('1 Month', 30),
                         _buildTimeFilterChip('1 Year', 365),
+                        _buildTimeFilterChip('5 Years', 1825),
                         _buildTimeFilterChip('All Time', 99999),
                       ],
                     ),
@@ -347,7 +352,9 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
               ? _buildElectionCalendar()
               : _currentTabIndex == 2
                 ? const BattleModeWidget()
-                : _isLoading 
+                : _currentTabIndex == 5
+                  ? _buildPartiesList()
+                  : _isLoading 
                   ? const Center(child: CircularProgressIndicator())
                   : _leaders.isEmpty
                     ? Center(child: Text(_currentTabIndex == 3 ? 'You haven\'t voted for any leaders yet.' : 'No leaders found.'))
@@ -509,6 +516,7 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
         });
         if (index == 0 || index == 3) _fetchLocalLeaders();
         if (index == 1) _fetchTrendingLeaders();
+        if (index == 5) _fetchParties();
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -770,6 +778,186 @@ class _PoliticalHubScreenState extends ConsumerState<PoliticalHubScreen> {
           ),
           DynamicBannerAdWidget(),
         ],
+      ),
+    );
+  }
+
+  Future<void> _fetchParties() async {
+    setState(() => _isPartiesLoading = true);
+    try {
+      final response = await _supabase
+          .from('parties_master')
+          .select()
+          .order('total_likes', ascending: false);
+      
+      if (mounted) {
+        setState(() {
+          _parties = (response as List).map((e) => PartyModel.fromJson(e)).toList();
+          _isPartiesLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching parties: $e');
+      if (mounted) setState(() => _isPartiesLoading = false);
+    }
+  }
+
+  Future<void> _castPartyVote(String partyId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login to vote')),
+        );
+        return;
+      }
+
+      await _supabase.rpc('cast_party_vote', params: {
+        'p_party_id': partyId,
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vote cast successfully! 🎉'), backgroundColor: Colors.green),
+      );
+      _fetchParties();
+      
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      if (e.message.contains('VOTE_LOCKED_30_DAYS')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Aapne pehle hi vote kar diya hai. 1 mahine baad change kar sakte hain.'), backgroundColor: Colors.red),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.message}')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Party Vote error: $e');
+    }
+  }
+
+  Widget _buildPartiesList() {
+    if (_isPartiesLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_parties.isEmpty) {
+      return const Center(child: Text('No parties found.'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: _parties.length,
+      itemBuilder: (context, index) {
+        final party = _parties[index];
+        return _buildPartyCard(party, index);
+      },
+    );
+  }
+
+  Widget _buildPartyCard(PartyModel party, int rankIndex) {
+    // Dynamic logo size based on rank
+    double logoSize = 80.0 - (rankIndex * 2.0);
+    if (logoSize < 40.0) logoSize = 40.0; // Minimum size
+
+    // Dynamic styles for top 3
+    Color cardColor = Colors.white;
+    Color shadowColor = Colors.black.withOpacity(0.05);
+    Widget? rankBadge;
+
+    if (rankIndex == 0) {
+      cardColor = const Color(0xFFFFF8E1);
+      shadowColor = Colors.orange.withOpacity(0.3);
+      rankBadge = const Text('👑 #1 Party', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold));
+    } else if (rankIndex == 1) {
+      cardColor = const Color(0xFFF5F5F5);
+      shadowColor = Colors.grey.withOpacity(0.3);
+      rankBadge = const Text('🥈 #2 Party', style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold));
+    } else if (rankIndex == 2) {
+      cardColor = const Color(0xFFEFEBE9);
+      shadowColor = Colors.brown.withOpacity(0.2);
+      rankBadge = const Text('🥉 #3 Party', style: TextStyle(color: Colors.brown, fontWeight: FontWeight.bold));
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: rankIndex < 3 ? 12 : 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            if (rankBadge != null) ...[
+              Align(alignment: Alignment.centerLeft, child: rankBadge),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                Container(
+                  width: logoSize,
+                  height: logoSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey.shade100,
+                    border: Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
+                    ]
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: party.logoUrl != null
+                      ? Image.network(party.logoUrl!, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.flag))
+                      : const Icon(Icons.flag, size: 30),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        party.name,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${party.totalLikes} Votes',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _castPartyVote(party.id),
+                icon: const Icon(Icons.thumb_up_rounded),
+                label: const Text('VOTE FOR PARTY', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
