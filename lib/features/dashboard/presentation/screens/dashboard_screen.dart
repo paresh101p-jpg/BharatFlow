@@ -2088,7 +2088,7 @@ class _TopNetasSectionState extends State<_TopNetasSection> {
               Icon(Icons.stars_rounded, color: Colors.orange, size: 22),
               SizedBox(width: 8),
               Text(
-                'Top 3 Netas (All-Time)',
+                'Bharat Ke Top 3 Favorite Neta 🇮🇳',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
