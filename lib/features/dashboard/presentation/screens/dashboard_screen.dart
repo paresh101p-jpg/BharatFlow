@@ -44,6 +44,7 @@ import 'offline_maps_screen.dart';
 import 'package:bharat_flow/features/mera_khet/presentation/pages/mera_khet_home.dart';
 import 'favorites_alerts_screen.dart';
 import 'package:bharat_flow/features/mandi/presentation/screens/warehouse_locator_screen.dart';
+import 'package:bharat_flow/features/political/presentation/screens/political_hub_screen.dart';
 import 'package:bharat_flow/core/providers/weather_provider.dart';
 import 'package:bharat_flow/core/providers/location_provider.dart' as core_loc;
 import 'package:bharat_flow/core/providers/auth_providers.dart';
@@ -942,6 +943,7 @@ class _HomeTab extends ConsumerWidget {
                     itemCount: categories.length,
                     itemBuilder: (context, i) => _CatTile(cat: categories[i])),
                 const _HomeNewsSection(),
+                const _TopNetasSection(),
                 const SizedBox(height: 24),
                 const _FavoriteMandiWatch(),
                 const SizedBox(height: 24),
@@ -2033,4 +2035,157 @@ void _showRewardedUnlockDialog(BuildContext context, String featureKey,
       ),
     );
   });
+}
+
+class _TopNetasSection extends StatefulWidget {
+  const _TopNetasSection();
+  @override
+  State<_TopNetasSection> createState() => _TopNetasSectionState();
+}
+
+class _TopNetasSectionState extends State<_TopNetasSection> {
+  final SupabaseClient _supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> _topLeaders = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  void _fetch() async {
+    try {
+      final res = await _supabase
+          .from('leaders_master')
+          .select()
+          .eq('is_active', true)
+          .order('total_likes', ascending: false)
+          .limit(3);
+      if (mounted) {
+        setState(() {
+          _topLeaders = List<Map<String, dynamic>>.from(res as List);
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading || _topLeaders.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Icon(Icons.stars_rounded, color: Colors.orange, size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Top 3 Netas (All-Time)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: _topLeaders.asMap().entries.map((e) {
+              final i = e.key;
+              final l = e.value;
+              final colors = [
+                Colors.amber.shade400,
+                Colors.grey.shade400,
+                Colors.orange.shade300
+              ];
+              final ranks = ['👑 #1', '🥈 #2', '🥉 #3'];
+              
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PoliticalHubScreen()),
+                  );
+                },
+                child: Container(
+                  width: 140,
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colors[i], width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors[i].withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(ranks[i], style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Colors.grey.shade100,
+                        backgroundImage: (l['photo_url'] != null && l['photo_url'].toString().isNotEmpty)
+                            ? NetworkImage(l['photo_url'])
+                            : null,
+                        child: (l['photo_url'] == null || l['photo_url'].toString().isEmpty)
+                            ? const Icon(Icons.person, color: Colors.grey)
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        l['name'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.thumb_up_rounded, color: Colors.green, size: 10),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${l['total_likes'] ?? 0}',
+                              style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        )
+      ],
+    );
+  }
 }
