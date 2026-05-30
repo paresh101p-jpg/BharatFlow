@@ -142,7 +142,10 @@ class WeatherData {
 
 class WeatherNotificationManager {
   static Future<void> toggleAlert(String type, bool isOn) async {
-    final topic = 'weather_alert_$type';
+    final box = await Hive.openBox('settings');
+    final city = box.get('last_city', defaultValue: '');
+    final safeCity = city.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final topic = safeCity.isNotEmpty ? 'weather_$safeCity' : 'weather_alert_$type';
     try {
       if (isOn) {
         await FirebaseMessaging.instance.subscribeToTopic(topic);
@@ -166,7 +169,7 @@ final weatherProvider = FutureProvider<WeatherData>((ref) async {
   final lng = location.longitude;
 
   final box = await Hive.openBox('weather_cache');
-  final cacheKey = 'weather_full_v5_${lat.toStringAsFixed(2)}';
+  final cacheKey = 'weather_full_v7_${lat.toStringAsFixed(2)}';
   final cached = box.get(cacheKey);
 
   // Check Cache (15 Minutes)
@@ -219,7 +222,20 @@ final weatherProvider = FutureProvider<WeatherData>((ref) async {
     ApiTracker.logCall('VPS: Google Weather API', statusCode: res != null ? 200 : 404);
 
     if (res != null) {
-      if (res['hourly_data'] == null) {
+      final updatedStr = res['updated_at'] as String?;
+      bool isStale = false;
+      if (updatedStr != null) {
+        String uStr = updatedStr;
+        if (!uStr.endsWith('Z') && !uStr.contains('+')) uStr += 'Z';
+        final updatedAt = DateTime.tryParse(uStr);
+        if (updatedAt != null && DateTime.now().toUtc().difference(updatedAt.toUtc()).inMinutes > 60) {
+          isStale = true;
+        }
+      }
+
+      if (isStale) {
+         print('⚠️ Supabase data is stale (older than 1h). Bypassing to OpenMeteo!');
+      } else if (res['hourly_data'] == null) {
          print('⚠️ Missing hourly_data in Supabase. Bypassing to OpenMeteo!');
       } else if (res['wind_speed'] == null) {
          print('⚠️ Missing wind_speed in Supabase. Bypassing to OpenMeteo to fix 0.0 issue!');
@@ -306,7 +322,7 @@ Future<WeatherData> _processSupabaseData(Map res, dynamic location, Box box, Str
   final hourlyRaw = res['hourly_data'];
   if (hourlyRaw is Map) {
     final times = hourlyRaw['time'] as List? ?? [];
-    for (int i = 0; i < (times.length > 48 ? 48 : times.length); i++) {
+    for (int i = 0; i < (times.length > 72 ? 72 : times.length); i++) {
       hourlyList.add(HourlyForecast(
         time: DateTime.parse(times[i]),
         temp: (hourlyRaw['temperature_2m'][i] as num).round(),
@@ -337,13 +353,28 @@ Future<WeatherData> _processSupabaseData(Map res, dynamic location, Box box, Str
     forecastStr += ' | ${rain}mm Rain';
   }
 
+  DateTime actualTime;
+  try {
+    if (res['forecast_14d'] != null && res['forecast_14d']['actual_time'] != null) {
+      actualTime = DateTime.parse(res['forecast_14d']['actual_time']);
+    } else if (res['updated_at'] != null) {
+      String uTime = res['updated_at'];
+      if (!uTime.endsWith('Z') && !uTime.contains('+')) uTime += 'Z';
+      actualTime = DateTime.parse(uTime).toLocal();
+    } else {
+      actualTime = DateTime.now();
+    }
+  } catch (_) {
+    actualTime = DateTime.now();
+  }
+
   final data = WeatherData(
     condition: condition,
     temp: '${res['temperature']}°C',
     forecast: forecastStr,
     advisory: advisory,
     iconType: rain > 10 ? 'Rain' : 'Clear',
-    lastUpdated: DateTime.now(),
+    lastUpdated: actualTime,
     sunrise: res['sunrise'] ?? '',
     sunset: res['sunset'] ?? '',
     windSpeed: wind,
@@ -368,11 +399,21 @@ Future<WeatherData> _processSupabaseData(Map res, dynamic location, Box box, Str
     final locBox = await Hive.openBox('settings');
     final isEnabled = locBox.get('weather_notifications_enabled', defaultValue: true);
     if (isEnabled && weekly.isNotEmpty) {
+      int wCode = 0;
+      if (hourlyList.isNotEmpty) {
+        wCode = hourlyRaw['weather_code'][0] as int? ?? 0;
+      } else if (rain > 10) {
+        wCode = 61; // Rain
+      }
+      
       await NotificationService.scheduleDailyWeatherNotifications(
         location.city,
         weekly[0].maxTemp,
         weekly[0].minTemp,
+        wCode
       );
+      // Subscribe to FCM topic for current city to receive backend extreme weather alerts
+      await WeatherNotificationManager.toggleAlert('general', true);
     }
   } catch (e) {
     print('Error scheduling weather notification from Supabase: $e');
@@ -402,13 +443,16 @@ Future<WeatherData> _fetchFromOpenMeteo(double lat, double lng, dynamic location
       final uvIndex = (daily['uv_index_max'][0] as num?)?.toDouble() ?? 0.0;
       
       List<DailyForecast> weekly = [];
-      for (int i = 0; i < 14; i++) {
-        final wCode = daily['weather_code'][i];
-        final pProb = daily['precipitation_probability_max'][i];
-        final maxT = daily['temperature_2m_max'][i].round();
-        final minT = daily['temperature_2m_min'][i].round();
-        final maxWind = (daily['wind_speed_10m_max']?[i] as num?)?.toDouble() ?? 0.0;
-        final uv = (daily['uv_index_max']?[i] as num?)?.toDouble() ?? 0.0;
+      final dailyTimes = daily['time'] as List? ?? [];
+      final maxDays = dailyTimes.length > 14 ? 14 : dailyTimes.length;
+      
+      for (int i = 0; i < maxDays; i++) {
+        final wCode = (daily['weather_code'] != null && daily['weather_code'].length > i) ? daily['weather_code'][i] : 0;
+        final pProb = (daily['precipitation_probability_max'] != null && daily['precipitation_probability_max'].length > i) ? daily['precipitation_probability_max'][i] : 0;
+        final maxT = (daily['temperature_2m_max'] != null && daily['temperature_2m_max'].length > i) ? daily['temperature_2m_max'][i].round() : 0;
+        final minT = (daily['temperature_2m_min'] != null && daily['temperature_2m_min'].length > i) ? daily['temperature_2m_min'][i].round() : 0;
+        final maxWind = (daily['wind_speed_10m_max'] != null && daily['wind_speed_10m_max'].length > i) ? (daily['wind_speed_10m_max'][i] as num?)?.toDouble() ?? 0.0 : 0.0;
+        final uv = (daily['uv_index_max'] != null && daily['uv_index_max'].length > i) ? (daily['uv_index_max'][i] as num?)?.toDouble() ?? 0.0 : 0.0;
 
         String domCond = '';
         String domVal = '';
@@ -449,12 +493,14 @@ Future<WeatherData> _fetchFromOpenMeteo(double lat, double lng, dynamic location
 
       List<HourlyForecast> hourlyList = [];
       if (hourly != null) {
-        for (int i = 0; i < 48; i++) {
+        final hourlyTimes = hourly['time'] as List? ?? [];
+        final maxHours = hourlyTimes.length > 72 ? 72 : hourlyTimes.length;
+        for (int i = 0; i < maxHours; i++) {
           hourlyList.add(HourlyForecast(
             time: DateTime.parse(hourly['time'][i]),
-            temp: hourly['temperature_2m'][i].round(),
-            precipProb: hourly['precipitation_probability'][i],
-            iconType: _mapWeatherCode(hourly['weather_code'][i])['icon']!,
+            temp: (hourly['temperature_2m'] != null && hourly['temperature_2m'].length > i) ? hourly['temperature_2m'][i].round() : 0,
+            precipProb: (hourly['precipitation_probability'] != null && hourly['precipitation_probability'].length > i) ? hourly['precipitation_probability'][i] : 0,
+            iconType: _mapWeatherCode((hourly['weather_code'] != null && hourly['weather_code'].length > i) ? hourly['weather_code'][i] : 0)['icon']!,
           ));
         }
       }
@@ -489,13 +535,20 @@ Future<WeatherData> _fetchFromOpenMeteo(double lat, double lng, dynamic location
         forecastStr += ' | ${currentRain}mm Rain';
       }
 
+      DateTime actualTime;
+      try {
+        actualTime = DateTime.parse(current['time']);
+      } catch (_) {
+        actualTime = DateTime.now();
+      }
+
       final weatherData = WeatherData(
         condition: condition,
         temp: '$temp°C',
         forecast: forecastStr,
         advisory: advisory,
         iconType: conditionInfo['icon']!,
-        lastUpdated: DateTime.now(),
+        lastUpdated: actualTime,
         sunrise: DateFormat.jm().format(sunriseTime),
         sunset: DateFormat.jm().format(sunsetTime),
         windSpeed: wind,
@@ -528,7 +581,7 @@ try {
     'sunset': daily['sunset'][0],
     'forecast_14d': dataMap['daily'], 
     'hourly_data': dataMap['hourly'],
-    'updated_at': DateTime.now().toIso8601String(),
+    'updated_at': DateTime.now().toUtc().toIso8601String(),
   });
 } catch (e) {
   print('⚠️ Auto-Registration Failed: $e');
@@ -545,7 +598,10 @@ try {
             location.city,
             weekly[0].maxTemp,
             weekly[0].minTemp,
+            weatherCode,
           );
+          // Subscribe to FCM topic for current city to receive backend extreme weather alerts
+          await WeatherNotificationManager.toggleAlert('general', true);
         }
       } catch (e) {
         print('Error scheduling weather notification: $e');
